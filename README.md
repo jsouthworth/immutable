@@ -1,6 +1,8 @@
 # Immutable
 
 [![GoDoc](https://godoc.org/jsouthworth.net/go/immutable?status.svg)](https://godoc.org/jsouthworth.net/go/immutable)
+[![Build Status](https://travis-ci.org/jsouthworth/immutable.svg?branch=master)](https://travis-ci.org/jsouthworth/immutable)
+[![Coverage Status](https://coveralls.io/repos/github/jsouthworth/immutable/badge.svg?branch=master)](https://coveralls.io/github/jsouthworth/immutable?branch=master)
 
 This library implements several persistent datastructures for the go programming language. A vector based on Radix Balanced Trees with some optimizations adapted from Clojure. A HAMT based hashmap inspired heavily by Clojure's hashmap. A Red/Black tree based treemap based on Okasaki's persistent red/black tree with a deletion extension from Germane and Might.
 
