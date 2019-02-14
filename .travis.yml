@@ -6,6 +6,7 @@ go_import_path: jsouthworth.net/go/immutable
 before_install:
   - go get github.com/mattn/goveralls
 script:
-  - $GOPATH/bin/goveralls -service=travis-ci -v
+  - go test -v ./... -coverprofile cover.out
+  - $GOPATH/bin/goveralls -service=travis-ci -v -coverprofile cover.out
 
 
