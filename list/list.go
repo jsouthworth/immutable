@@ -21,6 +21,15 @@ func Empty() *List {
 	return nil
 }
 
+// New converts as list of elements to a persistent list.
+func New(elems ...interface{}) *List {
+	out := Empty()
+	for i := len(elems) - 1; i >= 0; i-- {
+		out = Cons(elems[i], out)
+	}
+	return out
+}
+
 // Cons constructs a new list from the element and another list.
 func Cons(elem interface{}, list *List) *List {
 	return &List{
@@ -108,16 +117,28 @@ func (l *List) Range(do interface{}) {
 // Seq returns a representation of the list as a sequence
 // corresponding to the elements of the list.
 func (l *List) Seq() seq.Sequence {
-	return &listSequence{List: l}
+	return &listSequence{l: l}
+}
+
+// String returns a string representation of the list.
+func (l *List) String() string {
+	return seq.ConvertToString(l.Seq())
 }
 
 type listSequence struct {
-	*List
+	l *List
 }
 
+func (l *listSequence) First() interface{} {
+	return l.l.First()
+}
 func (l *listSequence) Next() seq.Sequence {
-	if l.next == nil {
+	if l.l.next == nil {
 		return nil
 	}
-	return l.next.Seq()
+	return l.l.next.Seq()
+}
+
+func (l *listSequence) String() string {
+	return seq.ConvertToString(l)
 }

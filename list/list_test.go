@@ -1,6 +1,7 @@
 package list
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/leanovate/gopter"
@@ -188,4 +189,14 @@ func TestRange(t *testing.T) {
 			gen.Int(),
 		))
 	properties.TestingRun(t)
+}
+
+func ExampleString() {
+	fmt.Println(New(1, 2, 3, 4, 5, 6))
+	// Output: (1 2 3 4 5 6)
+}
+
+func ExampleSeqString() {
+	fmt.Println(New(1, 2, 3, 4, 5, 6).Seq())
+	// Output: (1 2 3 4 5 6)
 }
