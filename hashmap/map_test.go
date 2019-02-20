@@ -1296,3 +1296,12 @@ func unmakeRandomMap(r *rmap) map[string]string {
 var genRandomMap = gopter.DeriveGen(makeRandomMap, unmakeRandomMap,
 	gen.MapOf(gen.Identifier(), gen.Identifier()),
 )
+
+func TestSeqString(t *testing.T) {
+	out := fmt.Sprint(New("a", "b", "c", "d").Seq())
+	if out != "([a b] [c d])" &&
+		out != "([c d] [a b])" {
+		t.Fatalf("seq.String didn't produce the expected output, got %s",
+			out)
+	}
+}

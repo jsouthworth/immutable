@@ -192,3 +192,7 @@ func (s *arrayNodeSeq) Next() seq.Sequence {
 	return out
 
 }
+
+func (s *arrayNodeSeq) String() string {
+	return seq.ConvertToString(s)
+}

@@ -599,6 +599,10 @@ func (e *entrySeq) Next() seq.Sequence {
 	return out
 }
 
+func (e *entrySeq) String() string {
+	return seq.ConvertToString(e)
+}
+
 func mask(hash uintptr, shift uint) uint {
 	return uint((hash >> shift) & maskValue)
 }
