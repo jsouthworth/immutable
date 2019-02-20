@@ -35,3 +35,7 @@ func (s *sequence) Next() seq.Sequence {
 	}
 	return &sequence{list: next}
 }
+
+func (s *sequence) String() string {
+	return seq.ConvertToString(s)
+}

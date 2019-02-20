@@ -898,3 +898,13 @@ func unmakeRandomMap(r *rmap) map[string]string {
 var genRandomMap = gopter.DeriveGen(makeRandomMap, unmakeRandomMap,
 	gen.MapOf(gen.Identifier(), gen.Identifier()),
 )
+
+func ExampleString() {
+	fmt.Println(New("1", "2", "3", "4"))
+	// Output: { [1 2] [3 4] }
+}
+
+func ExampleSeqString() {
+	fmt.Println(New("1", "2", "3", "4").Seq())
+	// Output: ([1 2] [3 4])
+}
