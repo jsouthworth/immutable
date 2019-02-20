@@ -207,6 +207,10 @@ func (s *stackSequence) Next() seq.Sequence {
 	}
 }
 
+func (s *stackSequence) String() string {
+	return seq.ConvertToString(s)
+}
+
 type TStack struct {
 	backingVector *vector.TVector
 }

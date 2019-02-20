@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -413,4 +414,14 @@ func TestTransientRange(t *testing.T) {
 			gen.Int(),
 		))
 	properties.TestingRun(t)
+}
+
+func ExampleString() {
+	fmt.Println(New(1, 2, 3, 4))
+	// Output: [ 4 3 2 1 ]
+}
+
+func ExampleSeqString() {
+	fmt.Println(New(1, 2, 3, 4).Seq())
+	// Output: (4 3 2 1)
 }
