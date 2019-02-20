@@ -1,8 +1,12 @@
 package queue
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/leanovate/gopter"
+	"github.com/leanovate/gopter/gen"
+	"github.com/leanovate/gopter/prop"
 	"jsouthworth.net/go/immutable/vector"
 	"jsouthworth.net/go/seq"
 )
@@ -95,4 +99,144 @@ func TestQueueSeq(t *testing.T) {
 	if result != 6 {
 		t.Fatal("didn't get the expected result from reduce")
 	}
+}
+
+func TestRange(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("Range func(interface{})",
+		prop.ForAll(
+			func(a int) bool {
+				expected := a + a
+				l := Empty().Push(a).Push(a)
+				var got int
+				l.Range(func(i interface{}) {
+					got += i.(int)
+				})
+				return got == expected
+			},
+			gen.Int(),
+		))
+	properties.Property("Range func(interface{}) bool",
+		prop.ForAll(
+			func(a int) bool {
+				expected := a
+				l := Empty().Push(a).Push(a)
+				var got int
+				l.Range(func(i interface{}) bool {
+					got += i.(int)
+					return false
+				})
+				return got == expected
+			},
+			gen.Int(),
+		))
+	properties.Property("Range func(T)",
+		prop.ForAll(
+			func(a int) bool {
+				expected := a + a
+				l := Empty().Push(a).Push(a)
+				var got int
+				l.Range(func(i int) {
+					got += i
+				})
+				return got == expected
+			},
+			gen.Int(),
+		))
+	properties.Property("Range func(T) bool",
+		prop.ForAll(
+			func(a int) bool {
+				expected := a
+
+				l := Empty().Push(a).Push(a)
+				var got int
+				l.Range(func(i int) bool {
+					got += i
+					return false
+				})
+				return got == expected
+			},
+			gen.Int(),
+		))
+	properties.Property("Range func(T) T panics",
+		prop.ForAll(
+			func(a int) (ok bool) {
+				defer func() {
+					r := recover()
+					ok = r == errRangeSig
+				}()
+				expected := a
+				l := Empty().Push(a).Push(a)
+				var got int
+				l.Range(func(i int) int {
+					got += i
+					return got
+				})
+				return got == expected
+			},
+			gen.Int(),
+		))
+	properties.Property("Range func(T, T) bool panics",
+		prop.ForAll(
+			func(a int) (ok bool) {
+				defer func() {
+					r := recover()
+					ok = r == errRangeSig
+				}()
+				expected := a
+				l := Empty().Push(a).Push(a)
+				var got int
+				l.Range(func(i, j int) bool {
+					got += i
+					return true
+				})
+				return got == expected
+			},
+			gen.Int(),
+		))
+	properties.Property("Range func(T, T) (bool,bool) panics",
+		prop.ForAll(
+			func(a int) (ok bool) {
+				defer func() {
+					r := recover()
+					ok = r == errRangeSig
+				}()
+				expected := a
+				l := Empty().Push(a).Push(a)
+				var got int
+				l.Range(func(i, j int) (bool, bool) {
+					got += i
+					return true, false
+				})
+				return got == expected
+			},
+			gen.Int(),
+		))
+	properties.Property("Range(int) panics",
+		prop.ForAll(
+			func(a int) (ok bool) {
+				defer func() {
+					r := recover()
+					ok = r == errRangeSig
+				}()
+				expected := a
+				l := Empty().Push(a).Push(a)
+				var got int
+				l.Range(a)
+				return got == expected
+			},
+			gen.Int(),
+		))
+	properties.TestingRun(t)
+}
+
+func ExampleString() {
+	fmt.Println(New(1, 2, 3, 4, 5, 6))
+	// Output: [ 1 2 3 4 5 6 ]
+}
+
+func ExampleSeqString() {
+	fmt.Println(New(1, 2, 3, 4, 5, 6).Seq())
+	// Output: (1 2 3 4 5 6)
 }

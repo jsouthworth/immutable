@@ -2,22 +2,23 @@ package queue
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
+	"strings"
 
 	"jsouthworth.net/go/immutable/vector"
 	"jsouthworth.net/go/seq"
 )
 
+var errRangeSig = errors.New("Range requires a function: func(v vT) bool or func(v vT)")
+
 // Queue represents a persistent immutable queue structure.
 type Queue struct {
-	first seq.Sequence
-	rest  *vector.Vector
-	count int
+	bv *vector.Slice
 }
 
 var empty = Queue{
-	first: nil,
-	rest:  nil,
-	count: 0,
+	bv: vector.Empty().Slice(0, 0),
 }
 
 // Empty returns an empty queue.
@@ -72,85 +73,123 @@ func queueFromSequence(coll seq.Sequence) *Queue {
 
 // Push returns a Queue with the element added to the end.
 func (q *Queue) Push(elem interface{}) *Queue {
-	if q.first == nil {
-		return &Queue{
-			first: seq.Cons(elem, nil),
-			rest:  nil,
-			count: 1,
-		}
-	}
 	return &Queue{
-		first: q.first,
-		rest:  q.rest.Append(elem),
-		count: q.count + 1,
+		bv: q.bv.Append(elem),
 	}
 }
 
 // Pop returns a queue with the first element removed.
 func (q *Queue) Pop() *Queue {
-	if q.first == nil {
-		return q
+	new := q.bv.Slice(1, q.bv.Length())
+	if new.Length() == 0 {
+		return Empty()
 	}
-
-	first := seq.Next(q.first)
-	if first != nil {
-		return &Queue{
-			first: first,
-			rest:  q.rest,
-			count: q.count - 1,
-		}
-	}
-
 	return &Queue{
-		first: seq.Seq(q.rest),
-		rest:  nil,
-		count: q.count - 1,
+		bv: new,
 	}
 }
 
 // First returns the first element of the queue.
 func (q *Queue) First() interface{} {
-	return seq.First(q.first)
+	elem, _ := q.bv.Find(0)
+	return elem
+}
+
+// Range calls the passed in function on each element of the queue.
+// The function passed in may be of many types:
+//
+// func(value interface{}) bool:
+//    Takes a value of any type and returns if the loop should continue.
+//    Useful to avoid reflection where not needed and to support
+//    heterogenous queues.
+// func(value interface{})
+//    Takes a value of any type.
+//    Useful to avoid reflection where not needed and to support
+//    heterogenous queues.
+// func(value T) bool:
+//    Takes a value of the type of element stored in the queue and
+//    returns if the loop should continue. Useful for homogeneous queues.
+//    Is called with reflection and will panic if the type is incorrect.
+// func(value T)
+//    Takes a value of the type of element stored in the queue and
+//    returns if the loop should continue. Useful for homogeneous queues.
+//    Is called with reflection and will panic if the type is incorrect.
+// Range will panic if passed anything that doesn't match one of these signatures
+func (q *Queue) Range(do interface{}) {
+	cont := true
+	for queue := q; queue != Empty() && cont; queue = queue.Pop() {
+		value := queue.First()
+		switch fn := do.(type) {
+		case func(value interface{}) bool:
+			cont = fn(value)
+		case func(value interface{}):
+			fn(value)
+		default:
+			rv := reflect.ValueOf(do)
+			if rv.Kind() != reflect.Func {
+				panic(errRangeSig)
+			}
+			rt := rv.Type()
+			if rt.NumIn() != 1 || rt.NumOut() > 1 {
+				panic(errRangeSig)
+			}
+			if rt.NumOut() == 1 &&
+				rt.Out(0).Kind() != reflect.Bool {
+				panic(errRangeSig)
+			}
+			outs := rv.Call([]reflect.Value{
+				reflect.ValueOf(value)})
+			if len(outs) != 0 {
+				cont = outs[0].Interface().(bool)
+			}
+		}
+	}
 }
 
 // Seq returns the queue as a sequence.
 func (q *Queue) Seq() seq.Sequence {
-	if q.first == nil {
+	if q.bv.Length() == 0 {
 		return nil
 	}
 	return &queueSeq{
-		first: q.first,
-		rest:  seq.Seq(q.rest),
+		queue: q,
 	}
+}
+
+// String returns a representation of the queue as a string.
+func (q *Queue) String() string {
+	b := new(strings.Builder)
+	fmt.Fprint(b, "[ ")
+	q.Range(func(item interface{}) {
+		fmt.Fprintf(b, "%v ", item)
+	})
+	fmt.Fprint(b, "]")
+	return b.String()
 }
 
 // Length returns the number of elements currently in the queue.
 func (q *Queue) Length() int {
-	return q.count
+	return q.bv.Length()
 }
 
 type queueSeq struct {
-	first seq.Sequence
-	rest  seq.Sequence
+	queue *Queue
 }
 
 func (q *queueSeq) First() interface{} {
-	return seq.First(q.first)
+	return q.queue.First()
 }
 
 func (q *queueSeq) Next() seq.Sequence {
-	first := seq.Next(q.first)
-	if first == nil {
-		if q.rest == nil {
-			return nil
-		}
-		return &queueSeq{
-			first: q.rest,
-			rest:  nil,
-		}
+	new := q.queue.Pop()
+	if new.bv.Length() == 0 {
+		return nil
 	}
 	return &queueSeq{
-		first: first,
-		rest:  q.rest,
+		queue: new,
 	}
+}
+
+func (q *queueSeq) String() string {
+	return seq.ConvertToString(q)
 }
