@@ -1021,3 +1021,13 @@ func TestFind(t *testing.T) {
 	})
 
 }
+
+func ExampleString() {
+	fmt.Println(New(1, 2, 3, 4, 5))
+	// Output: [1 2 3 4 5]
+}
+
+func ExampleSeqString() {
+	fmt.Println(New(1, 2, 3, 4, 5).Seq())
+	// Output: (1 2 3 4 5)
+}

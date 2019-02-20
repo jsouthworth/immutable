@@ -868,6 +868,10 @@ func (seq *vectorSequence) Next() seq.Sequence {
 	}
 }
 
+func (s *vectorSequence) String() string {
+	return seq.ConvertToString(s)
+}
+
 // Slice is a view of an underlying persistent vector.
 // For the most part a Slice shares semantics with a go slice,
 // except that changes do not modify the underlying vector;
