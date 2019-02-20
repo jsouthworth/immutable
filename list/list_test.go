@@ -49,6 +49,15 @@ func TestList(t *testing.T) {
 			},
 			gen.Int(),
 		))
+	properties.Property("s=Cons(b,Cons(a,nil)).Find(a) -> a, ok",
+		prop.ForAll(
+			func(a, b int) bool {
+				v, ok := Cons(b, Cons(a, Empty())).Find(a)
+				return v == a && ok
+			},
+			gen.Int(),
+			gen.Int(),
+		))
 	properties.TestingRun(t)
 }
 

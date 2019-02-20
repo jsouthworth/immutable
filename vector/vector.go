@@ -118,6 +118,17 @@ func (v *Vector) At(i int) interface{} {
 	return arr[i&mask]
 }
 
+// Find returns the value at the supplied index and if that index was
+// in bounds for the vector. Out of bounds access does not panic but
+// returns (nil, false). idx must be an int.
+func (v *Vector) Find(idx interface{}) (interface{}, bool) {
+	i := idx.(int)
+	if i < 0 || i >= v.Length() {
+		return nil, false
+	}
+	return v.At(i), true
+}
+
 // Assoc associates the value with the index in an immutable copy of the vector
 // sharing structure with the original vector.
 func (v *Vector) Assoc(i int, value interface{}) *Vector {
@@ -471,6 +482,17 @@ func (v *TVector) At(i int) interface{} {
 	v.ensureEditable()
 	node := v.arrayFor(i)
 	return node[i&mask]
+}
+
+// Find returns the value at the supplied index and if that index was
+// in bounds for the vector. Out of bounds access does not panic but
+// returns (nil, false). idx must be an int.
+func (v *TVector) Find(idx interface{}) (interface{}, bool) {
+	i := idx.(int)
+	if i < 0 || i >= v.Length() {
+		return nil, false
+	}
+	return v.At(i), true
 }
 
 // Assoc associates the value with the index.
@@ -862,6 +884,17 @@ func (s *Slice) At(i int) interface{} {
 		panic(errOutOfBounds)
 	}
 	return s.vector.At(s.start + i)
+}
+
+// Find returns the value at the supplied index and if that index was
+// in bounds for the vector. Out of bounds access does not panic but
+// returns (nil, false). idx must be an int.
+func (s *Slice) Find(idx interface{}) (interface{}, bool) {
+	i := idx.(int)
+	if i < 0 || i >= s.Length() {
+		return nil, false
+	}
+	return s.At(i), true
 }
 
 // Append will extend the vector and associates the value with new last

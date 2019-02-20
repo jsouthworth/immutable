@@ -163,6 +163,13 @@ func (m *Map) Contains(key interface{}) bool {
 	return ok
 }
 
+// Find will return the value for a key if it exists in the map and
+// whether the key exists in the map. For non-nil values, exists will
+// always be true.
+func (m *Map) Find(key interface{}) (value interface{}, exists bool) {
+	return get(m.root, key)
+}
+
 // Assoc associates a value with a key in the map.
 // A new persistent map is returned if the key and value
 // are different from one already in the map, if the entry

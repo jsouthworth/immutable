@@ -61,6 +61,16 @@ func TestStack(t *testing.T) {
 				reflect.TypeOf((*interface{})(nil)).Elem()),
 			gen.Int(),
 		))
+	properties.Property("s=From(empty).Push(a).Find(a) == a, true)",
+		prop.ForAll(
+			func(as []interface{}, a int) bool {
+				v, ok := From(as).Push(a).Find(a)
+				return v == a && ok
+			},
+			gen.SliceOfN(0, gen.Int(),
+				reflect.TypeOf((*interface{})(nil)).Elem()),
+			gen.Int(),
+		))
 	properties.TestingRun(t)
 }
 
@@ -128,6 +138,17 @@ func TestTStack(t *testing.T) {
 				return s.Pop().AsPersistent() != Empty()
 			},
 			gen.SliceOfN(10, gen.Int(),
+				reflect.TypeOf((*interface{})(nil)).Elem()),
+			gen.Int(),
+		))
+	properties.Property("s=From(is).Push(a).Find(a) == a, true)",
+		prop.ForAll(
+			func(as []interface{}, a int) bool {
+				t := From(as).AsTransient().Push(a)
+				v, ok := t.Find(a)
+				return v == a && ok
+			},
+			gen.SliceOfN(0, gen.Int(),
 				reflect.TypeOf((*interface{})(nil)).Elem()),
 			gen.Int(),
 		))

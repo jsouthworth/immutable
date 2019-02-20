@@ -198,6 +198,13 @@ func (m *Map) Contains(key interface{}) bool {
 	return ok
 }
 
+// Find will return the value for a key if it exists in the map and
+// whether the key exists in the map. For non-nil values, exists will
+// always be true.
+func (m *Map) Find(key interface{}) (value interface{}, exists bool) {
+	return m.root.find(0, hash.Any(key, m.hashSeed), key)
+}
+
 // Delete removes a key and associated value from the map.
 func (m *Map) Delete(key interface{}) *Map {
 	root, removed := m.root.without(zero, 0,
@@ -405,6 +412,13 @@ func (m *TMap) Contains(key interface{}) bool {
 	m.ensureEditable()
 	_, ok := m.root.find(0, hash.Any(key, m.hashSeed), key)
 	return ok
+}
+
+// Find will return the value for a key if it exists in the map and
+// whether the key exists in the map. For non-nil values, exists will
+// always be true.
+func (m *TMap) Find(key interface{}) (value interface{}, exists bool) {
+	return m.root.find(0, hash.Any(key, m.hashSeed), key)
 }
 
 // Delete removes a key and associated value from the map.

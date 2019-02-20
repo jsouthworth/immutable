@@ -96,6 +96,22 @@ func (s *Stack) Top() interface{} {
 	return s.backingVector.At(s.backingVector.Length() - 1)
 }
 
+// Find whether the value exists in the stack by walking every value.
+// Returns the value and whether or not it was found.
+func (s *Stack) Find(value interface{}) (interface{}, bool) {
+	var out interface{}
+	var found bool
+	s.Range(func(v interface{}) bool {
+		if v == value {
+			out = v
+			found = true
+			return false
+		}
+		return true
+	})
+	return out, found
+}
+
 // AsTransient will return a mutable copy on write version of the stack.
 func (s *Stack) AsTransient() *TStack {
 	return &TStack{
@@ -210,6 +226,22 @@ func (s *TStack) Pop() *TStack {
 // Top returns the top element of the stack.
 func (s *TStack) Top() interface{} {
 	return s.backingVector.At(s.backingVector.Length() - 1)
+}
+
+// Find whether the value exists in the stack by walking every value.
+// Returns the value and whether or not it was found.
+func (s *TStack) Find(value interface{}) (interface{}, bool) {
+	var out interface{}
+	var found bool
+	s.Range(func(v interface{}) bool {
+		if v == value {
+			out = v
+			found = true
+			return false
+		}
+		return true
+	})
+	return out, found
 }
 
 // AsPersistent returns the an immutable version of the stack. Any

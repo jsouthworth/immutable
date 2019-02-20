@@ -39,6 +39,22 @@ func (l *List) Next() *List {
 	return l.next
 }
 
+// Find whether the value exists in the list by walking every value.
+// Returns the value and whether or not it was found.
+func (l *List) Find(value interface{}) (interface{}, bool) {
+	var out interface{}
+	var found bool
+	l.Range(func(v interface{}) bool {
+		if v == value {
+			out = v
+			found = true
+			return false
+		}
+		return true
+	})
+	return out, found
+}
+
 // Range calls the passed in function on each element of the list.
 // The function passed in may be of many types:
 //

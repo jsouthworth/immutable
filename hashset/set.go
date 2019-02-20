@@ -133,6 +133,16 @@ func (s *Set) Contains(elem interface{}) bool {
 	return s.backingMap.Contains(elem)
 }
 
+// Find will return the key if it exists in the set and whether the
+// key exists in the set. If the key is not in the set, (nil, false) is
+// returned.
+func (s *Set) Find(elem interface{}) (interface{}, bool) {
+	if s.backingMap.Contains(elem) {
+		return elem, true
+	}
+	return nil, false
+}
+
 // Delete removes an element from the set returning a new Set without
 // the element.
 func (s *Set) Delete(elem interface{}) *Set {

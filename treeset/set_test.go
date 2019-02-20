@@ -40,6 +40,24 @@ func TestSet(t *testing.T) {
 			},
 			gen.Int(),
 		))
+	properties.Property("s=Empty().Add(i).Find(i) -> i, true",
+		prop.ForAll(
+			func(i int) bool {
+				s := Empty().Add(i)
+				_, ok := s.Find(i)
+				return ok
+			},
+			gen.Int(),
+		))
+	properties.Property("s=Empty().Find(i) -> nil, false",
+		prop.ForAll(
+			func(i int) bool {
+				s := Empty()
+				_, ok := s.Find(i)
+				return !ok
+			},
+			gen.Int(),
+		))
 	properties.Property("s=Empty().Add(i); r=s.Add(i)->r == s",
 		prop.ForAll(
 			func(i int) bool {

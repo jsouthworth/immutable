@@ -952,3 +952,72 @@ func TestVectorSliceRange(t *testing.T) {
 		}
 	})
 }
+
+func TestFind(t *testing.T) {
+	t.Run("Vector, in bounds", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5)
+		val, ok := v.Find(3)
+		if !ok {
+			t.Fatal("Expected to find a value at index 3")
+		}
+		if val != 4 {
+			t.Fatal("Did not find the expected value at index 3")
+		}
+	})
+	t.Run("Vector, out of bounds", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5)
+		_, ok := v.Find(-1)
+		if ok {
+			t.Fatal("Didn't expected to find a value at index -1")
+		}
+		_, ok = v.Find(v.Length())
+		if ok {
+			t.Fatal("Didn't expected to find a value at", v.Length())
+		}
+	})
+
+	t.Run("TVector, in bounds", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5).AsTransient()
+		val, ok := v.Find(3)
+		if !ok {
+			t.Fatal("Expected to find a value at index 3")
+		}
+		if val != 4 {
+			t.Fatal("Did not find the expected value at index 3")
+		}
+	})
+	t.Run("TVector, out of bounds", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5).AsTransient()
+		_, ok := v.Find(-1)
+		if ok {
+			t.Fatal("Didn't expected to find a value at index -1")
+		}
+		_, ok = v.Find(v.Length())
+		if ok {
+			t.Fatal("Didn't expected to find a value at", v.Length())
+		}
+	})
+
+	t.Run("Slice, in bounds", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5).Slice(1, 5)
+		val, ok := v.Find(3)
+		if !ok {
+			t.Fatal("Expected to find a value at index 3")
+		}
+		if val != 5 {
+			t.Fatal("Did not find the expected value at index 3")
+		}
+	})
+	t.Run("Slice, out of bounds", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5).Slice(1, 5)
+		_, ok := v.Find(-1)
+		if ok {
+			t.Fatal("Didn't expected to find a value at index -1")
+		}
+		_, ok = v.Find(v.Length())
+		if ok {
+			t.Fatal("Didn't expected to find a value at", v.Length())
+		}
+	})
+
+}

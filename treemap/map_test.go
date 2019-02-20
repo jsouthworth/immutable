@@ -306,6 +306,33 @@ func TestContains(t *testing.T) {
 	properties.TestingRun(t)
 }
 
+func TestFind(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("ForAll generatedEntries random.Find(entry.k) is non-nil and exists", prop.ForAll(
+		func(rm *rmap) bool {
+			for key := range rm.entries {
+				v, ok := rm.m.Find(key)
+				if v == nil || !ok {
+					return false
+				}
+			}
+			return true
+		},
+		genRandomMap,
+	))
+	properties.Property("Non-existent keys don't exist in map", prop.ForAll(
+		func(rm *rmap, key string) bool {
+			_, inEntries := rm.entries[key]
+			_, inMap := rm.m.Find(key)
+			return inEntries == inMap
+		},
+		genRandomMap,
+		gen.Identifier(),
+	))
+	properties.TestingRun(t)
+}
+
 func TestAssoc(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)
