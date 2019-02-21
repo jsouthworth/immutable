@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"jsouthworth.net/go/dyn"
 	"jsouthworth.net/go/immutable/vector"
 	"jsouthworth.net/go/seq"
 )
@@ -138,10 +139,9 @@ func (q *Queue) Range(do interface{}) {
 				rt.Out(0).Kind() != reflect.Bool {
 				panic(errRangeSig)
 			}
-			outs := rv.Call([]reflect.Value{
-				reflect.ValueOf(value)})
-			if len(outs) != 0 {
-				cont = outs[0].Interface().(bool)
+			out := dyn.Apply(do, value)
+			if out != nil {
+				cont = out.(bool)
 			}
 		}
 	}
