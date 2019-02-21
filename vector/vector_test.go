@@ -143,6 +143,9 @@ func TestVectorEqual(t *testing.T) {
 
 func TestVectorEqualAfterAssoc(t *testing.T) {
 	f := func(vec *testPvector) bool {
+		if vec.Length() == 0 {
+			return true
+		}
 		vec2 := vec.Assoc(0, 100)
 		return !vec.Equal(vec2)
 	}
