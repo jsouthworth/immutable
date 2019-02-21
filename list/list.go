@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 
+	"jsouthworth.net/go/dyn"
 	"jsouthworth.net/go/seq"
 )
 
@@ -105,10 +106,9 @@ func (l *List) Range(do interface{}) {
 				rt.Out(0).Kind() != reflect.Bool {
 				panic(errRangeSig)
 			}
-			outs := rv.Call([]reflect.Value{
-				reflect.ValueOf(list.First())})
-			if len(outs) != 0 {
-				cont = outs[0].Interface().(bool)
+			out := dyn.Apply(do, list.First())
+			if out != nil {
+				cont = out.(bool)
 			}
 		}
 	}
