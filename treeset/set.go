@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"jsouthworth.net/go/dyn"
 	"jsouthworth.net/go/immutable/treemap"
 	"jsouthworth.net/go/seq"
 )
@@ -198,10 +199,9 @@ func (s *Set) Range(do interface{}) {
 		}
 		rangefn = func(key, _ interface{}) bool {
 			cont := true
-			outs := rv.Call([]reflect.Value{
-				reflect.ValueOf(key)})
-			if len(outs) != 0 {
-				cont = outs[0].Interface().(bool)
+			out := dyn.Apply(do, key)
+			if out != nil {
+				cont = out.(bool)
 			}
 			return cont
 		}
