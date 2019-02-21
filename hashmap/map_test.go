@@ -872,6 +872,17 @@ func TestRange(t *testing.T) {
 		}),
 	))
 	properties.TestingRun(t)
+	t.Run("Range works with nilable type", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r != nil {
+				t.Fatal(r)
+			}
+		}()
+		m := Empty().Assoc("a", nil)
+		m.Range(func(k string, v *int) {
+		})
+	})
 }
 
 func TestMutate(t *testing.T) {
