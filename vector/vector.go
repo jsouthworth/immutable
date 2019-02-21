@@ -203,7 +203,7 @@ func (v *Vector) Equal(o interface{}) bool {
 	}
 	for i := 0; i < v.Length(); i++ {
 		val := v.At(i)
-		if other.At(i) != val {
+		if !equal(other.At(i), val) {
 			return false
 		}
 	}
@@ -957,6 +957,25 @@ func (s *Slice) Seq() seq.Sequence {
 	}
 }
 
+// Equal compares each value of the slice to determine if the slice is
+// equal to the one passed in.
+func (s *Slice) Equal(o interface{}) bool {
+	other, ok := o.(*Slice)
+	if !ok {
+		return false
+	}
+	if s.Length() != other.Length() {
+		return false
+	}
+	for i := 0; i < s.Length(); i++ {
+		val := s.At(i)
+		if !equal(other.At(i), val) {
+			return false
+		}
+	}
+	return true
+}
+
 // String coverts the vector to a string representation.
 func (s *Slice) String() string {
 	return vectorString(s)
@@ -1026,4 +1045,13 @@ func vectorString(v interface {
 	}
 	fmt.Fprint(buf, "]")
 	return buf.String()
+}
+
+func equal(v1, v2 interface{}) bool {
+	switch val := v1.(type) {
+	case interface{ Equal(interface{}) bool }:
+		return val.Equal(v2)
+	default:
+		return v1 == v2
+	}
 }
