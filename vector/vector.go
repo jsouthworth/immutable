@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"jsouthworth.net/go/dyn"
 	"jsouthworth.net/go/seq"
 )
 
@@ -356,11 +357,9 @@ func (v *Vector) Range(do interface{}) {
 				rt.Out(0).Kind() != reflect.Bool {
 				panic(errRangeSig)
 			}
-			outs := rv.Call([]reflect.Value{
-				reflect.ValueOf(i),
-				reflect.ValueOf(value)})
-			if len(outs) != 0 {
-				cont = outs[0].Interface().(bool)
+			out := dyn.Apply(do, i, value)
+			if out != nil {
+				cont = out.(bool)
 			}
 		}
 	}
@@ -639,11 +638,9 @@ func (v *TVector) Range(do interface{}) {
 				rt.Out(0).Kind() != reflect.Bool {
 				panic(errRangeSig)
 			}
-			outs := rv.Call([]reflect.Value{
-				reflect.ValueOf(i),
-				reflect.ValueOf(value)})
-			if len(outs) != 0 {
-				cont = outs[0].Interface().(bool)
+			out := dyn.Apply(do, i, value)
+			if out != nil {
+				cont = out.(bool)
 			}
 		}
 	}
@@ -1007,11 +1004,9 @@ func (s *Slice) Range(do interface{}) {
 				rt.Out(0).Kind() != reflect.Bool {
 				panic(errRangeSig)
 			}
-			outs := rv.Call([]reflect.Value{
-				reflect.ValueOf(i),
-				reflect.ValueOf(value)})
-			if len(outs) != 0 {
-				cont = outs[0].Interface().(bool)
+			out := dyn.Apply(do, i, value)
+			if out != nil {
+				cont = out.(bool)
 			}
 		}
 	}
