@@ -559,6 +559,9 @@ func entrySeqNew(es entries, index int, s seq.Sequence) *entrySeq {
 				s:     nil,
 			}
 		}
+		if entry.v == nil {
+			continue
+		}
 		n := entry.v.(node)
 		if n == nil {
 			continue
