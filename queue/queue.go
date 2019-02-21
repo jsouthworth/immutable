@@ -1,3 +1,4 @@
+// Package queue implements a persistent FIFO queue.
 package queue
 
 import (
