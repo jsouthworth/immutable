@@ -598,7 +598,8 @@ func TestLength(t *testing.T) {
 	properties.Property("new=large.Assoc(k,v) -> new.Length()==large.Length()+1", prop.ForAll(
 		func(lm *lmap, k, v string) bool {
 			new := lm.m.Assoc(k, v)
-			return new.Length() == lm.m.Length()+1
+			return lm.m.At(k) == v ||
+				new.Length() == lm.m.Length()+1
 		},
 		genLargeMap,
 		gen.Identifier(),
