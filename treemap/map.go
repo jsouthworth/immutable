@@ -324,3 +324,11 @@ func (m *Map) Equal(o interface{}) bool {
 	})
 	return foundAll
 }
+
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows map to be called
+// as a function by the 'dyn' library.
+func (m *Map) Apply(args ...interface{}) interface{} {
+	k := args[0]
+	return m.At(k)
+}
