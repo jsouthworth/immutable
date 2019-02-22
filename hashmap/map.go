@@ -334,6 +334,14 @@ func (m *Map) String() string {
 	return b.String()
 }
 
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows map to be called
+// as a function by the 'dyn' library.
+func (m *Map) Apply(args ...interface{}) interface{} {
+	key := args[0]
+	return m.At(key)
+}
+
 // Mutate takes a set of mutation actions and performs them
 // on the persistent map. It does this by making a transient
 // map and calling each action on it, then converting it back
@@ -438,6 +446,14 @@ func (m *TMap) Delete(key interface{}) *TMap {
 // Length returns the number of entries in the map.
 func (m *TMap) Length() int {
 	return m.count
+}
+
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows map to be called
+// as a function by the 'dyn' library.
+func (m *TMap) Apply(args ...interface{}) interface{} {
+	key := args[0]
+	return m.At(key)
 }
 
 func (m *TMap) ensureEditable() {

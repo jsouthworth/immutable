@@ -10,6 +10,7 @@ import (
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
+	"jsouthworth.net/go/dyn"
 )
 
 func assert(t *testing.T, b bool, msg string) {
@@ -288,6 +289,13 @@ func TestAt(t *testing.T) {
 		genRandomMap,
 	))
 	properties.TestingRun(t)
+}
+
+func TestApply(t *testing.T) {
+	m := New("a", 1, "b", 2)
+	if dyn.Apply(m, "a") != m.At("a") {
+		t.Fatal("Apply didn't return the expected value")
+	}
 }
 
 func TestEntryAt(t *testing.T) {
@@ -1236,6 +1244,13 @@ func TestTransientAsPersistent(t *testing.T) {
 		gen.Identifier(),
 	))
 	properties.TestingRun(t)
+}
+
+func TestTransientApply(t *testing.T) {
+	m := New("a", 1, "b", 2).AsTransient()
+	if dyn.Apply(m, "a") != m.At("a") {
+		t.Fatal("Apply didn't return the expected value")
+	}
 }
 
 func makeMap() *Map {
