@@ -7,6 +7,8 @@ import (
 	"testing"
 	"testing/quick"
 	"time"
+
+	"jsouthworth.net/go/dyn"
 )
 
 func BenchmarkSliceAppend(b *testing.B) {
@@ -1033,4 +1035,25 @@ func ExampleString() {
 func ExampleSeqString() {
 	fmt.Println(New(1, 2, 3, 4, 5).Seq())
 	// Output: (1 2 3 4 5)
+}
+
+func TestApply(t *testing.T) {
+	v := New(1, 2, 3, 4, 5, 6)
+	if v.At(2) != dyn.Apply(v, 2) {
+		t.Fatal("apply didn't return the expected result")
+	}
+}
+
+func TestTransientApply(t *testing.T) {
+	v := New(1, 2, 3, 4, 5, 6).AsTransient()
+	if v.At(2) != dyn.Apply(v, 2) {
+		t.Fatal("apply didn't return the expected result")
+	}
+}
+
+func TestSliceApply(t *testing.T) {
+	v := New(1, 2, 3, 4, 5, 6).Slice(0, 4)
+	if v.At(2) != dyn.Apply(v, 2) {
+		t.Fatal("apply didn't return the expected result")
+	}
 }

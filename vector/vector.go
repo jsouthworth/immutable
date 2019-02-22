@@ -57,7 +57,7 @@ func New(elems ...interface{}) *Vector {
 	return v.AsPersistent()
 }
 
-// From will convert many go types to an immutable map.
+// From will convert many go types to an immutable vector.
 // Converting some types is more efficient than others and the
 // mechanisms are described below.
 //
@@ -365,6 +365,14 @@ func (v *Vector) Range(do interface{}) {
 	}
 }
 
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows vector to be called
+// as a function by the 'dyn' library.
+func (v *Vector) Apply(args ...interface{}) interface{} {
+	idx := args[0].(int)
+	return v.At(idx)
+}
+
 func (v *Vector) tailOffset() int {
 	if v.count < width {
 		return 0
@@ -463,7 +471,7 @@ func (v *Vector) doAssoc(
 }
 
 // TVector is a transient version of a Vector. Changes made to a
-// transient map will not effect the original persistent
+// transient vector will not effect the original persistent
 // structure. Changes occur as mutation of the transient. The changes
 // made will become immutable when AsPersistent is called. This structure
 // is useful when making mulitple modifications to a persistent vector
@@ -644,6 +652,14 @@ func (v *TVector) Range(do interface{}) {
 			}
 		}
 	}
+}
+
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows vector to be called
+// as a function by the 'dyn' library.
+func (v *TVector) Apply(args ...interface{}) interface{} {
+	idx := args[0].(int)
+	return v.At(idx)
 }
 
 func (v *TVector) roomInTail() bool {
@@ -1029,6 +1045,14 @@ func (s *Slice) Range(do interface{}) {
 			}
 		}
 	}
+}
+
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows a slice to be called
+// as a function by the 'dyn' library.
+func (s *Slice) Apply(args ...interface{}) interface{} {
+	idx := args[0].(int)
+	return s.At(idx)
 }
 
 func vectorString(v interface {
