@@ -236,6 +236,14 @@ func (s *Set) String() string {
 	return b.String()
 }
 
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows map to be called
+// as a function by the 'dyn' library.
+func (s *Set) Apply(args ...interface{}) interface{} {
+	key := args[0]
+	return s.At(key)
+}
+
 // TSet is a transient copy on write version of Set. Changes made to a
 // transient set will not effect the original persistent
 // structure. Changes to a transient set occur as mutations. These
@@ -286,4 +294,12 @@ func (s *TSet) AsPersistent() *Set {
 	return &Set{
 		backingMap: s.backingMap.AsPersistent(),
 	}
+}
+
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows map to be called
+// as a function by the 'dyn' library.
+func (s *TSet) Apply(args ...interface{}) interface{} {
+	key := args[0]
+	return s.At(key)
 }
