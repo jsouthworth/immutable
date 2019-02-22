@@ -224,3 +224,11 @@ func (s *Set) String() string {
 	fmt.Fprint(&b, "}")
 	return b.String()
 }
+
+// Apply takes an arbitrary number of arguments and returns the
+// value At the first argument.  Apply allows set to be called
+// as a function by the 'dyn' library.
+func (s *Set) Apply(args ...interface{}) interface{} {
+	k := args[0]
+	return s.At(k)
+}

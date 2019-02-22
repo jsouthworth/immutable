@@ -8,6 +8,7 @@ import (
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
+	"jsouthworth.net/go/dyn"
 	"jsouthworth.net/go/immutable/vector"
 	"jsouthworth.net/go/seq"
 )
@@ -368,6 +369,20 @@ func TestFrom(t *testing.T) {
 				return set.Length() == 1 && set.Contains(i)
 			},
 			gen.Int(),
+		))
+	properties.TestingRun(t)
+}
+
+func TestApply(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("dyn.Apply(s, i)==s.At(i)",
+		prop.ForAll(
+			func(is []int) bool {
+				s := From(is)
+				return s.At(is[0]) == dyn.Apply(s, is[0])
+			},
+			gen.SliceOfN(10, gen.Int()),
 		))
 	properties.TestingRun(t)
 }
