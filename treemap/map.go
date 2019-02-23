@@ -34,16 +34,19 @@ var empty = Map{
 	count:   0,
 }
 
-type mapOpts struct {
+type mapOptions struct {
 	compare cmpFunc
 }
-type mapOpt func(*mapOpts)
+
+// Option is a type that allows changes to pluggable parts of the
+// Map implementation.
+type Option func(*mapOptions)
 
 // Compare is an option to the Empty function that will allow
 // one to specify a different comparison operator instead
 // of the default which is from the dyn library.
-func Compare(cmp func(k1, k2 interface{}) int) mapOpt {
-	return func(o *mapOpts) {
+func Compare(cmp func(k1, k2 interface{}) int) Option {
+	return func(o *mapOptions) {
 		o.compare = cmp
 	}
 }
@@ -51,8 +54,8 @@ func Compare(cmp func(k1, k2 interface{}) int) mapOpt {
 // Empty returns a new empty persistent map, one may supply options
 // for the map by using one of the option generating functions and
 // providing that to Empty.
-func Empty(options ...mapOpt) *Map {
-	var opts mapOpts
+func Empty(options ...Option) *Map {
+	var opts mapOptions
 	for _, opt := range options {
 		opt(&opts)
 	}
@@ -73,7 +76,7 @@ func New(elems ...interface{}) *Map {
 	return newWithOptions(elems)
 }
 
-func newWithOptions(elems []interface{}, options ...mapOpt) *Map {
+func newWithOptions(elems []interface{}, options ...Option) *Map {
 	if len(elems)%2 != 0 {
 		panic(errOddElements)
 	}
@@ -100,7 +103,7 @@ func newWithOptions(elems []interface{}, options ...mapOpt) *Map {
 //    Reflection is used to loop over the entries of the map and associate them with an empty transient map. The transient map is converted to a persistent map and then returned.
 // []T:
 //    Reflection is used to convert the slice to []interface{} and then passed to New.
-func From(value interface{}, options ...mapOpt) *Map {
+func From(value interface{}, options ...Option) *Map {
 	switch v := value.(type) {
 	case *Map:
 		return v
@@ -123,7 +126,7 @@ func From(value interface{}, options ...mapOpt) *Map {
 	}
 }
 
-func mapFromReflection(value interface{}, options ...mapOpt) *Map {
+func mapFromReflection(value interface{}, options ...Option) *Map {
 	v := reflect.ValueOf(value)
 	switch v.Kind() {
 	case reflect.Map:
