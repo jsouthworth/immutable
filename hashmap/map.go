@@ -241,7 +241,7 @@ func (m *Map) Equal(o interface{}) bool {
 	}
 	foundAll := true
 	m.Range(func(key, value interface{}) bool {
-		if !equal(other.At(key), value) {
+		if !dyn.Equal(other.At(key), value) {
 			foundAll = false
 			return false
 		}
@@ -492,7 +492,7 @@ func (e entry) isLeaf() bool {
 }
 
 func (e entry) matches(k interface{}) bool {
-	return equal(k, e.k)
+	return dyn.Equal(k, e.k)
 }
 
 type entries []entry

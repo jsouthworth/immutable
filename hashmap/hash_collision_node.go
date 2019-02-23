@@ -1,6 +1,7 @@
 package hashmap
 
 import (
+	"jsouthworth.net/go/dyn"
 	"jsouthworth.net/go/seq"
 )
 
@@ -20,7 +21,7 @@ func (n *hashCollisionNode) assoc(
 	if hash == n.hash {
 		idx, ok := n.findIndex(k)
 		if ok {
-			if equal(n.array[idx].v, v) {
+			if dyn.Equal(n.array[idx].v, v) {
 				return n, false
 			}
 			return n.editAndSet(edit, idx, v), false
@@ -37,7 +38,7 @@ func (n *hashCollisionNode) assoc(
 
 func (n *hashCollisionNode) findIndex(k interface{}) (int, bool) {
 	for i, e := range n.array {
-		if equal(k, e.k) {
+		if dyn.Equal(k, e.k) {
 			return i, true
 		}
 	}
@@ -107,7 +108,7 @@ func (n *hashCollisionNode) find(
 	if !ok {
 		return nil, false
 	}
-	if equal(k, n.array[idx].k) {
+	if dyn.Equal(k, n.array[idx].k) {
 		return n.array[idx].v, true
 	}
 	return nil, false

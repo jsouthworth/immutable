@@ -3,6 +3,7 @@ package hashmap
 import (
 	"math/bits"
 
+	"jsouthworth.net/go/dyn"
 	"jsouthworth.net/go/hash"
 	"jsouthworth.net/go/seq"
 )
@@ -75,7 +76,7 @@ func (n *bitmapIndexedNode) assocExisting(
 		return editable, added
 	case e.matches(k):
 		// A key replacement
-		if equal(v, e.v) {
+		if dyn.Equal(v, e.v) {
 			return n, false
 		}
 		editable := n.ensureEditable(edit)
@@ -199,7 +200,7 @@ func (n *bitmapIndexedNode) without(
 			editable.bitmap = editable.bitmap &^ bit
 			return editable, removed
 		}
-	case equal(k, ent.k):
+	case dyn.Equal(k, ent.k):
 		if n.bitmap == bit {
 			return nil, true
 		}
@@ -226,7 +227,7 @@ func (n *bitmapIndexedNode) find(
 	if !ent.isLeaf() {
 		return ent.v.(node).find(shift+shiftBits, hash, k)
 	}
-	if equal(ent.k, k) {
+	if dyn.Equal(ent.k, k) {
 		return ent.v, true
 	}
 	return nil, false
