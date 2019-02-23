@@ -29,8 +29,8 @@ type Map struct {
 }
 
 var empty = Map{
-	compare: defaultCompare,
-	root:    &leaf{cmp: defaultCompare},
+	compare: dyn.Compare,
+	root:    &leaf{cmp: dyn.Compare},
 	count:   0,
 }
 
@@ -39,6 +39,9 @@ type mapOpts struct {
 }
 type mapOpt func(*mapOpts)
 
+// Compare is an option to the Empty function that will allow
+// one to specify a different comparison operator instead
+// of the default which is from the dyn library.
 func Compare(cmp func(k1, k2 interface{}) int) mapOpt {
 	return func(o *mapOpts) {
 		o.compare = cmp
@@ -67,10 +70,14 @@ func Empty(options ...mapOpt) *Map {
 // by associating them pairwise. New will panic if the
 // number of elements is not even.
 func New(elems ...interface{}) *Map {
+	return newWithOptions(elems)
+}
+
+func newWithOptions(elems []interface{}, options ...mapOpt) *Map {
 	if len(elems)%2 != 0 {
 		panic(errOddElements)
 	}
-	out := Empty()
+	out := Empty(options...)
 	for i := 0; i < len(elems); i += 2 {
 		out = out.Assoc(elems[i], elems[i+1])
 	}
@@ -93,34 +100,34 @@ func New(elems ...interface{}) *Map {
 //    Reflection is used to loop over the entries of the map and associate them with an empty transient map. The transient map is converted to a persistent map and then returned.
 // []T:
 //    Reflection is used to convert the slice to []interface{} and then passed to New.
-func From(value interface{}) *Map {
+func From(value interface{}, options ...mapOpt) *Map {
 	switch v := value.(type) {
 	case *Map:
 		return v
 	case map[interface{}]interface{}:
-		out := Empty()
+		out := Empty(options...)
 		for key, val := range v {
 			out = out.Assoc(key, val)
 		}
 		return out
 	case []Entry:
-		out := Empty()
+		out := Empty(options...)
 		for _, entry := range v {
 			out = out.Assoc(entry.Key(), entry.Value())
 		}
 		return out
 	case []interface{}:
-		return New(v...)
+		return newWithOptions(v, options...)
 	default:
 		return mapFromReflection(value)
 	}
 }
 
-func mapFromReflection(value interface{}) *Map {
+func mapFromReflection(value interface{}, options ...mapOpt) *Map {
 	v := reflect.ValueOf(value)
 	switch v.Kind() {
 	case reflect.Map:
-		out := Empty()
+		out := Empty(options...)
 		for _, key := range v.MapKeys() {
 			val := v.MapIndex(key)
 			out = out.Assoc(key.Interface(), val.Interface())
@@ -132,9 +139,9 @@ func mapFromReflection(value interface{}) *Map {
 			elem := v.Index(i)
 			sl[i] = elem.Interface()
 		}
-		return New(sl...)
+		return newWithOptions(sl, options...)
 	default:
-		return Empty()
+		return Empty(options...)
 	}
 }
 
@@ -316,7 +323,7 @@ func (m *Map) Equal(o interface{}) bool {
 	}
 	foundAll := true
 	m.Range(func(key, value interface{}) bool {
-		if !equal(other.At(key), value) {
+		if !dyn.Equal(other.At(key), value) {
 			foundAll = false
 			return false
 		}

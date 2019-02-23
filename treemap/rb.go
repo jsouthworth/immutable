@@ -3,6 +3,8 @@ package treemap
 import (
 	"errors"
 	"fmt"
+
+	"jsouthworth.net/go/dyn"
 )
 
 //Based on : http://www.eecs.usma.edu/webs/people/okasaki/jfp99.ps
@@ -341,7 +343,7 @@ func (n *node) insert(key, value interface{}) (tree, bool) {
 			right: newRight,
 		}), added
 	default:
-		if !equal(n.elem.value, value) {
+		if !dyn.Equal(n.elem.value, value) {
 			return &node{
 				cmp:   n.cmp,
 				color: n.color,
@@ -533,23 +535,33 @@ type tree interface {
 // avoid the need to panic ourselves if a particular type doesn't understand the the behavior.
 // The panics will signal a problem with the implementation but should never occur in real code.
 func blacken(t tree) tree {
-	return t.(interface{ blacken() tree }).blacken()
+	return t.(interface {
+		blacken() tree
+	}).blacken()
 }
 
 func redden(t tree) tree {
-	return t.(interface{ redden() tree }).redden()
+	return t.(interface {
+		redden() tree
+	}).redden()
 }
 
 func addRed(t tree) tree {
-	return t.(interface{ addRed() tree }).addRed()
+	return t.(interface {
+		addRed() tree
+	}).addRed()
 }
 
 func balance(t tree) tree {
-	return t.(interface{ balance() tree }).balance()
+	return t.(interface {
+		balance() tree
+	}).balance()
 }
 
 func bubble(t tree) tree {
-	return t.(interface{ bubble() tree }).bubble()
+	return t.(interface {
+		bubble() tree
+	}).bubble()
 }
 
 func ins(t tree, key, value interface{}) (tree, bool) {
@@ -574,15 +586,21 @@ func _delete(t tree, key interface{}) tree {
 }
 
 func remove(t tree) tree {
-	return t.(interface{ remove() tree }).remove()
+	return t.(interface {
+		remove() tree
+	}).remove()
 }
 
 func removeMax(t tree) tree {
-	return t.(interface{ removeMax() tree }).removeMax()
+	return t.(interface {
+		removeMax() tree
+	}).removeMax()
 }
 
 func max(t tree) entry {
-	return t.(interface{ max() entry }).max()
+	return t.(interface {
+		max() entry
+	}).max()
 }
 
 func get(t tree, key interface{}) (entry, bool) {
@@ -597,17 +615,25 @@ func contains(t tree, key interface{}) bool {
 }
 
 func isDoubleBlack(t tree) bool {
-	return t.(interface{ isDoubleBlack() bool }).isDoubleBlack()
+	return t.(interface {
+		isDoubleBlack() bool
+	}).isDoubleBlack()
 }
 
 func right(t tree) tree {
-	return t.(interface{ rightBranch() tree }).rightBranch()
+	return t.(interface {
+		rightBranch() tree
+	}).rightBranch()
 }
 
 func left(t tree) tree {
-	return t.(interface{ leftBranch() tree }).leftBranch()
+	return t.(interface {
+		leftBranch() tree
+	}).leftBranch()
 }
 
 func value(t tree) entry {
-	return t.(interface{ value() entry }).value()
+	return t.(interface {
+		value() entry
+	}).value()
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
+	"jsouthworth.net/go/dyn"
 )
 
 // The following tests the behavior of the RB tree.
@@ -265,7 +266,7 @@ func (s *rbset) String() string {
 
 func makeRBSet(entries []int) *rbset {
 	var added bool
-	t := tree(&leaf{cmp: defaultCompare})
+	t := tree(&leaf{cmp: dyn.Compare})
 	storedEntries := make([]int, 0, len(entries))
 	for _, entry := range entries {
 		t, added = insert(t, entry, nil)
@@ -288,7 +289,7 @@ var genRBSet = gopter.DeriveGen(makeRBSet, unmakeRBSet,
 
 func BenchmarkInsert(b *testing.B) {
 	b.ReportAllocs()
-	t := tree(&leaf{cmp: defaultCompare})
+	t := tree(&leaf{cmp: dyn.Compare})
 	for i := 0; i < b.N; i++ {
 		t, _ = insert(t, i, nil)
 	}
