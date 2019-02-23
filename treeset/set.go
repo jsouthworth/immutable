@@ -20,15 +20,23 @@ type Set struct {
 }
 
 // Empty returns the empty set.
-func Empty() *Set {
+func Empty(options ...treemap.Option) *Set {
 	return &Set{
-		backingMap: treemap.Empty(),
+		backingMap: treemap.Empty(options...),
 	}
 }
 
 // New returns a set containing the supplied elements.
 func New(elems ...interface{}) *Set {
 	s := Empty()
+	for _, elem := range elems {
+		s = s.Add(elem)
+	}
+	return s
+}
+
+func newWithOptions(elems []interface{}, options ...treemap.Option) *Set {
+	s := Empty(options...)
 	for _, elem := range elems {
 		s = s.Add(elem)
 	}
@@ -53,56 +61,56 @@ func New(elems ...interface{}) *Set {
 //    The sequence is reduced into a transient set that is made persistent on return.
 // seq.Sequable:
 //    A sequence is obtained using Seq() and then the sequence is reduced into a transient set that is made persistent on return.
-func From(value interface{}) *Set {
+func From(value interface{}, options ...treemap.Option) *Set {
 	switch v := value.(type) {
 	case *Set:
 		return v
 	case map[interface{}]struct{}:
-		s := Empty()
+		s := Empty(options...)
 		for k := range v {
 			s = s.Add(k)
 		}
 		return s
 	case []interface{}:
-		return New(v...)
+		return newWithOptions(v, options...)
 	case seq.Seqable:
-		return setFromSequence(v.Seq())
+		return setFromSequence(v.Seq(), options...)
 	case seq.Sequence:
-		return setFromSequence(v)
+		return setFromSequence(v, options...)
 	default:
-		return setFromReflection(value)
+		return setFromReflection(value, options...)
 	}
 }
 
-func setFromSequence(coll seq.Sequence) *Set {
+func setFromSequence(coll seq.Sequence, options ...treemap.Option) *Set {
 	if coll == nil {
-		return Empty()
+		return Empty(options...)
 	}
 	return seq.Reduce(func(result *Set, input interface{}) *Set {
 		return result.Add(input)
 	}, Empty(), coll).(*Set)
 }
 
-func setFromReflection(value interface{}) *Set {
+func setFromReflection(value interface{}, options ...treemap.Option) *Set {
 	v := reflect.ValueOf(value)
 	switch v.Kind() {
 	case reflect.Map:
-		out := Empty()
+		out := Empty(options...)
 		for _, key := range v.MapKeys() {
 			out = out.Add(key.Interface())
 		}
 		return out
 	case reflect.Slice:
-		out := Empty()
+		out := Empty(options...)
 		for i := 0; i < v.Len(); i++ {
 			out = out.Add(v.Index(i).Interface())
 		}
 		return out
 	default:
 		if value == nil {
-			return Empty()
+			return Empty(options...)
 		}
-		return New(value)
+		return newWithOptions([]interface{}{value}, options...)
 	}
 }
 
