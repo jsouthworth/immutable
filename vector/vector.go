@@ -337,30 +337,41 @@ func (v *Vector) Slice(start, end int) *Slice {
 // Range will panic if passed anything that doesn't match one of these signatures
 func (v *Vector) Range(do interface{}) {
 	cont := true
+	fn := genRangeFunc(do)
 	for i := 0; i < v.Length() && cont; i++ {
 		value := v.At(i)
-		switch fn := do.(type) {
-		case func(idx int, value interface{}) bool:
-			cont = fn(i, value)
-		case func(idx int, value interface{}):
-			fn(i, value)
-		default:
-			rv := reflect.ValueOf(do)
-			if rv.Kind() != reflect.Func {
-				panic(errRangeSig)
-			}
-			rt := rv.Type()
-			if rt.NumIn() != 2 || rt.NumOut() > 1 {
-				panic(errRangeSig)
-			}
-			if rt.NumOut() == 1 &&
-				rt.Out(0).Kind() != reflect.Bool {
-				panic(errRangeSig)
-			}
-			out := dyn.Apply(do, i, value)
+		cont = fn(i, value)
+	}
+}
+
+func genRangeFunc(do interface{}) func(int, interface{}) bool {
+	switch fn := do.(type) {
+	case func(idx int, value interface{}) bool:
+		return fn
+	case func(idx int, value interface{}):
+		return func(idx int, value interface{}) bool {
+			fn(idx, value)
+			return true
+		}
+	default:
+		rv := reflect.ValueOf(do)
+		if rv.Kind() != reflect.Func {
+			panic(errRangeSig)
+		}
+		rt := rv.Type()
+		if rt.NumIn() != 2 || rt.NumOut() > 1 {
+			panic(errRangeSig)
+		}
+		if rt.NumOut() == 1 &&
+			rt.Out(0).Kind() != reflect.Bool {
+			panic(errRangeSig)
+		}
+		return func(idx int, value interface{}) bool {
+			out := dyn.Apply(do, idx, value)
 			if out != nil {
-				cont = out.(bool)
+				return out.(bool)
 			}
+			return true
 		}
 	}
 }
@@ -626,31 +637,10 @@ func (v *TVector) String() string {
 // Range will panic if passed anything that doesn't match one of these signatures
 func (v *TVector) Range(do interface{}) {
 	cont := true
+	fn := genRangeFunc(do)
 	for i := 0; i < v.Length() && cont; i++ {
 		value := v.At(i)
-		switch fn := do.(type) {
-		case func(idx int, value interface{}) bool:
-			cont = fn(i, value)
-		case func(idx int, value interface{}):
-			fn(i, value)
-		default:
-			rv := reflect.ValueOf(do)
-			if rv.Kind() != reflect.Func {
-				panic(errRangeSig)
-			}
-			rt := rv.Type()
-			if rt.NumIn() != 2 || rt.NumOut() > 1 {
-				panic(errRangeSig)
-			}
-			if rt.NumOut() == 1 &&
-				rt.Out(0).Kind() != reflect.Bool {
-				panic(errRangeSig)
-			}
-			out := dyn.Apply(do, i, value)
-			if out != nil {
-				cont = out.(bool)
-			}
-		}
+		cont = fn(i, value)
 	}
 }
 
@@ -1019,31 +1009,10 @@ func (s *Slice) String() string {
 // Range will panic if passed anything that doesn't match one of these signatures
 func (s *Slice) Range(do interface{}) {
 	cont := true
+	fn := genRangeFunc(do)
 	for i := 0; i < s.Length() && cont; i++ {
 		value := s.At(i)
-		switch fn := do.(type) {
-		case func(idx int, value interface{}) bool:
-			cont = fn(i, value)
-		case func(idx int, value interface{}):
-			fn(i, value)
-		default:
-			rv := reflect.ValueOf(do)
-			if rv.Kind() != reflect.Func {
-				panic(errRangeSig)
-			}
-			rt := rv.Type()
-			if rt.NumIn() != 2 || rt.NumOut() > 1 {
-				panic(errRangeSig)
-			}
-			if rt.NumOut() == 1 &&
-				rt.Out(0).Kind() != reflect.Bool {
-				panic(errRangeSig)
-			}
-			out := dyn.Apply(do, i, value)
-			if out != nil {
-				cont = out.(bool)
-			}
-		}
+		cont = fn(i, value)
 	}
 }
 
@@ -1073,7 +1042,9 @@ func vectorString(v interface {
 
 func equal(v1, v2 interface{}) bool {
 	switch val := v1.(type) {
-	case interface{ Equal(interface{}) bool }:
+	case interface {
+		Equal(interface{}) bool
+	}:
 		return val.Equal(v2)
 	default:
 		return v1 == v2
