@@ -251,36 +251,52 @@ func (m *Map) Range(do interface{}) {
 		return
 	}
 	var cont = true
+	fn := genRangeFunc(do)
 	for s != nil && cont {
 		entry := seq.First(s).(Entry)
-		switch fn := do.(type) {
-		case func(key, value interface{}) bool:
-			cont = fn(entry.Key(), entry.Value())
-		case func(key, value interface{}):
+		cont = fn(entry)
+		s = seq.Seq(seq.Next(s))
+	}
+}
+
+func genRangeFunc(do interface{}) func(Entry) bool {
+	switch fn := do.(type) {
+	case func(key, value interface{}) bool:
+		return func(entry Entry) bool {
+			return fn(entry.Key(), entry.Value())
+		}
+	case func(key, value interface{}):
+		return func(entry Entry) bool {
 			fn(entry.Key(), entry.Value())
-		case func(e Entry) bool:
-			cont = fn(entry)
-		case func(e Entry):
+			return true
+		}
+	case func(e Entry) bool:
+		return fn
+	case func(e Entry):
+		return func(entry Entry) bool {
 			fn(entry)
-		default:
-			rv := reflect.ValueOf(do)
-			if rv.Kind() != reflect.Func {
-				panic(errRangeSig)
-			}
-			rt := rv.Type()
-			if rt.NumIn() != 2 || rt.NumOut() > 1 {
-				panic(errRangeSig)
-			}
-			if rt.NumOut() == 1 &&
-				rt.Out(0).Kind() != reflect.Bool {
-				panic(errRangeSig)
-			}
+			return true
+		}
+	default:
+		rv := reflect.ValueOf(do)
+		if rv.Kind() != reflect.Func {
+			panic(errRangeSig)
+		}
+		rt := rv.Type()
+		if rt.NumIn() != 2 || rt.NumOut() > 1 {
+			panic(errRangeSig)
+		}
+		if rt.NumOut() == 1 &&
+			rt.Out(0).Kind() != reflect.Bool {
+			panic(errRangeSig)
+		}
+		return func(entry Entry) bool {
 			out := dyn.Apply(do, entry.Key(), entry.Value())
 			if out != nil {
-				cont = out.(bool)
+				return out.(bool)
 			}
+			return true
 		}
-		s = seq.Seq(seq.Next(s))
 	}
 }
 
