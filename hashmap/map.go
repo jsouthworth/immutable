@@ -358,11 +358,11 @@ func (m *Map) Apply(args ...interface{}) interface{} {
 	return m.At(key)
 }
 
-// Mutate takes a set of mutation actions and performs them
+// Transform takes a set of actions and performs them
 // on the persistent map. It does this by making a transient
 // map and calling each action on it, then converting it back
 // to a persistent map.
-func (m *Map) Mutate(actions ...func(*TMap) *TMap) *Map {
+func (m *Map) Transform(actions ...func(*TMap) *TMap) *Map {
 	out := m.AsTransient()
 	for _, action := range actions {
 		out = action(out)

@@ -894,12 +894,12 @@ func TestRange(t *testing.T) {
 	})
 }
 
-func TestMutate(t *testing.T) {
+func TestTransform(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)
 	properties.Property("Mutate makes expected changes", prop.ForAll(
 		func(m *Map) bool {
-			new := m.Mutate(
+			new := m.Transform(
 				func(t *TMap) *TMap {
 					return t.Assoc("foo", "bar")
 				},
@@ -920,7 +920,7 @@ func TestString(t *testing.T) {
 	properties := gopter.NewProperties(parameters)
 	properties.Property("Mutate makes expected changes", prop.ForAll(
 		func(m *Map) bool {
-			new := m.Mutate(
+			new := m.Transform(
 				func(t *TMap) *TMap {
 					return t.Assoc("foo", "bar")
 				},
