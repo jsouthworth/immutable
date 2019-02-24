@@ -119,30 +119,41 @@ func (q *Queue) First() interface{} {
 // Range will panic if passed anything that doesn't match one of these signatures
 func (q *Queue) Range(do interface{}) {
 	cont := true
+	fn := genRangeFunc(do)
 	for queue := q; queue != Empty() && cont; queue = queue.Pop() {
 		value := queue.First()
-		switch fn := do.(type) {
-		case func(value interface{}) bool:
-			cont = fn(value)
-		case func(value interface{}):
+		cont = fn(value)
+	}
+}
+
+func genRangeFunc(do interface{}) func(value interface{}) bool {
+	switch fn := do.(type) {
+	case func(value interface{}) bool:
+		return fn
+	case func(value interface{}):
+		return func(value interface{}) bool {
 			fn(value)
-		default:
-			rv := reflect.ValueOf(do)
-			if rv.Kind() != reflect.Func {
-				panic(errRangeSig)
-			}
-			rt := rv.Type()
-			if rt.NumIn() != 1 || rt.NumOut() > 1 {
-				panic(errRangeSig)
-			}
-			if rt.NumOut() == 1 &&
-				rt.Out(0).Kind() != reflect.Bool {
-				panic(errRangeSig)
-			}
+			return true
+		}
+	default:
+		rv := reflect.ValueOf(do)
+		if rv.Kind() != reflect.Func {
+			panic(errRangeSig)
+		}
+		rt := rv.Type()
+		if rt.NumIn() != 1 || rt.NumOut() > 1 {
+			panic(errRangeSig)
+		}
+		if rt.NumOut() == 1 &&
+			rt.Out(0).Kind() != reflect.Bool {
+			panic(errRangeSig)
+		}
+		return func(value interface{}) bool {
 			out := dyn.Apply(do, value)
 			if out != nil {
-				cont = out.(bool)
+				return out.(bool)
 			}
+			return true
 		}
 	}
 }
