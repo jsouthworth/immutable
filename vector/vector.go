@@ -203,7 +203,7 @@ func (v *Vector) Equal(o interface{}) bool {
 	}
 	for i := 0; i < v.Length(); i++ {
 		val := v.At(i)
-		if !equal(other.At(i), val) {
+		if !dyn.Equal(other.At(i), val) {
 			return false
 		}
 	}
@@ -975,7 +975,7 @@ func (s *Slice) Equal(o interface{}) bool {
 	}
 	for i := 0; i < s.Length(); i++ {
 		val := s.At(i)
-		if !equal(other.At(i), val) {
+		if !dyn.Equal(other.At(i), val) {
 			return false
 		}
 	}
@@ -1038,15 +1038,4 @@ func vectorString(v interface {
 	}
 	fmt.Fprint(buf, "]")
 	return buf.String()
-}
-
-func equal(v1, v2 interface{}) bool {
-	switch val := v1.(type) {
-	case interface {
-		Equal(interface{}) bool
-	}:
-		return val.Equal(v2)
-	default:
-		return v1 == v2
-	}
 }
