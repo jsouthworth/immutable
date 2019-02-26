@@ -11,6 +11,7 @@ import (
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
 	"jsouthworth.net/go/dyn"
+	"jsouthworth.net/go/seq"
 )
 
 func assert(t *testing.T, b bool, msg string) {
@@ -894,6 +895,33 @@ func TestRange(t *testing.T) {
 	})
 }
 
+func TestSeq(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("Mutate makes expected changes", prop.ForAll(
+		func(rm *rmap) (ok bool) {
+			s := seq.Seq(rm.m)
+			if s == nil {
+				return true
+			}
+			foundAll := true
+			fn := func(entry Entry) bool {
+				foundAll = rm.entries[entry.Key().(string)] == entry.Value()
+				return true
+			}
+			var cont = true
+			for s != nil && cont {
+				entry := seq.First(s).(Entry)
+				cont = fn(entry)
+				s = seq.Seq(seq.Next(s))
+			}
+			return foundAll
+		},
+		genRandomMap,
+	))
+	properties.TestingRun(t)
+}
+
 func TestTransform(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)
@@ -1245,6 +1273,182 @@ func TestTransientAsPersistent(t *testing.T) {
 		gen.Identifier(),
 	))
 	properties.TestingRun(t)
+}
+
+func TestTransientRange(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("Range access the full map", prop.ForAll(
+		func(rm *rmap) bool {
+			foundAll := true
+			rm.m.AsTransient().Range(func(key, val interface{}) bool {
+				if !foundAll {
+					return false
+				}
+				foundAll = rm.entries[key.(string)] == val
+				return true
+			})
+
+			return foundAll
+		},
+		genRandomMap,
+	))
+	properties.Property("Range access the full map no continue", prop.ForAll(
+		func(rm *rmap) bool {
+			foundAll := true
+			rm.m.AsTransient().Range(func(key, val interface{}) {
+				if !foundAll {
+					return
+				}
+				foundAll = rm.entries[key.(string)] == val
+				return
+			})
+
+			return foundAll
+		},
+		genRandomMap,
+	))
+	properties.Property("Range access the full map entries", prop.ForAll(
+		func(rm *rmap) bool {
+			foundAll := true
+			rm.m.AsTransient().Range(func(entry Entry) bool {
+				if !foundAll {
+					return false
+				}
+				foundAll = rm.entries[entry.Key().(string)] == entry.Value()
+				return true
+			})
+
+			return foundAll
+		},
+		genRandomMap,
+	))
+	properties.Property("Range access the full map entries no continue", prop.ForAll(
+		func(rm *rmap) bool {
+			foundAll := true
+			rm.m.AsTransient().Range(func(entry Entry) {
+				if !foundAll {
+					return
+				}
+				foundAll = rm.entries[entry.Key().(string)] == entry.Value()
+				return
+			})
+
+			return foundAll
+		},
+		genRandomMap,
+	))
+	properties.Property("Range with reflected func", prop.ForAll(
+		func(rm *rmap) bool {
+			foundAll := true
+			rm.m.AsTransient().Range(func(key, val string) bool {
+				if !foundAll {
+					return false
+				}
+				foundAll = rm.entries[key] == val
+				return true
+			})
+
+			return foundAll
+		},
+		genRandomMap,
+	))
+	properties.Property("Range with reflected func no continue", prop.ForAll(
+		func(rm *rmap) bool {
+			foundAll := true
+			rm.m.AsTransient().Range(func(key, val string) {
+				if !foundAll {
+					return
+				}
+				foundAll = rm.entries[key] == val
+			})
+
+			return foundAll
+		},
+		genRandomMap,
+	))
+	properties.Property("Range panics when passed a non function", prop.ForAll(
+		func(rm *rmap) (ok bool) {
+			defer func() {
+				r := recover()
+				ok = r == errRangeSig
+			}()
+
+			rm.m.AsTransient().Range(1)
+			return false
+		},
+		genRandomMap.SuchThat(func(rm *rmap) bool {
+			return rm.m.Length() > 0
+		}),
+	))
+	properties.Property("Range panics when passed a function with the wrong number of inputs", prop.ForAll(
+		func(rm *rmap) (ok bool) {
+			defer func() {
+				r := recover()
+				ok = r == errRangeSig
+			}()
+
+			rm.m.AsTransient().Range(func(a, b, c string) {})
+			return false
+		},
+		genRandomMap.SuchThat(func(rm *rmap) bool {
+			return rm.m.Length() > 0
+		}),
+	))
+	properties.Property("Range panics when passed a function with the wrong number of outputs", prop.ForAll(
+		func(rm *rmap) (ok bool) {
+			defer func() {
+				r := recover()
+				ok = r == errRangeSig
+			}()
+
+			rm.m.AsTransient().Range(func(a, b, c string) (d, e bool) { return false, false })
+			return false
+		},
+		genRandomMap.SuchThat(func(rm *rmap) bool {
+			return rm.m.Length() > 0
+		}),
+	))
+	properties.Property("Range panics when passed a function with the wrong output type", prop.ForAll(
+		func(rm *rmap) (ok bool) {
+			defer func() {
+				r := recover()
+				ok = r == errRangeSig
+			}()
+
+			rm.m.AsTransient().Range(func(a, b string) string { return "" })
+			return false
+		},
+		genRandomMap.SuchThat(func(rm *rmap) bool {
+			return rm.m.Length() > 0
+		}),
+	))
+	properties.Property("Range panics when passed a function with the wrong input types", prop.ForAll(
+		func(rm *rmap) (ok bool) {
+			ok = true
+			defer func() {
+				_ = recover()
+			}()
+
+			rm.m.AsTransient().Range(func(a, b int) {})
+			return false
+		},
+		genRandomMap.SuchThat(func(rm *rmap) bool {
+			return rm.m.Length() > 0
+		}),
+	))
+	properties.TestingRun(t)
+	t.Run("Range works with nilable type", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r != nil {
+				t.Fatal(r)
+			}
+		}()
+		m := Empty().Assoc("a", nil).AsTransient()
+		m.Range(func(k string, v *int) {
+		})
+	})
 }
 
 func TestTransientApply(t *testing.T) {

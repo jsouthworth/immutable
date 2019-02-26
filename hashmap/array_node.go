@@ -129,6 +129,18 @@ func (n *arrayNode) seq() seq.Sequence {
 	return out
 }
 
+func (n *arrayNode) rnge(fn func(Entry) bool) bool {
+	for _, node := range n.array {
+		if node == nil {
+			continue
+		}
+		if !node.rnge(fn) {
+			return false
+		}
+	}
+	return true
+}
+
 type array [width]node
 
 func (a *array) copy() *array {

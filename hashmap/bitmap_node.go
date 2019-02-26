@@ -269,3 +269,22 @@ func (n *bitmapIndexedNode) ensureEditable(edit *uint32) *bitmapIndexedNode {
 		edit:   edit,
 	}
 }
+
+func (n *bitmapIndexedNode) rnge(fn func(Entry) bool) bool {
+	for _, entry := range n.array {
+		if entry.isLeaf() {
+			if !fn(entry) {
+				return false
+			}
+			continue
+		}
+		n, ok := entry.v.(node)
+		if !ok || n == nil {
+			continue
+		}
+		if !n.rnge(fn) {
+			return false
+		}
+	}
+	return true
+}

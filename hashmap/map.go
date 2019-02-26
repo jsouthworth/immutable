@@ -278,17 +278,8 @@ func (m *Map) Length() int {
 //    Is called with reflection and will panic if the kT and vT types are incorrect.
 // Range will panic if passed anything not matching these signatures.
 func (m *Map) Range(do interface{}) {
-	s := seq.Seq(m)
-	if s == nil {
-		return
-	}
 	fn := genRangeFunc(do)
-	var cont = true
-	for s != nil && cont {
-		entry := seq.First(s).(Entry)
-		cont = fn(entry)
-		s = seq.Seq(seq.Next(s))
-	}
+	m.root.rnge(fn)
 }
 
 func genRangeFunc(do interface{}) func(Entry) bool {
@@ -478,6 +469,33 @@ func (m *TMap) ensureEditable() {
 	}
 }
 
+// Range will loop over the entries in the Map and call 'do' on each entry.
+// The 'do' function may be of many types:
+//
+// func(key, value interface{}) bool:
+//    Takes empty interfaces and returns if the loop should continue.
+//    Useful to avoid reflection or for hetrogenous maps.
+// func(key, value interface{}):
+//    Takes empty interfaces.
+//    Useful to avoid reflection or for hetrogenous maps.
+// func(entry Entry) bool:
+//    Takes the Entry type and returns if the loop should continue
+//    Is called directly and avoids entry unpacking if not necessary.
+// func(entry Entry):
+//    Takes the Entry type.
+//    Is called directly and avoids entry unpacking if not necessary.
+// func(k kT, v vT) bool
+//    Takes a key of key type and a value of value type and returns if the loop should contiune.
+//    Is called with reflection and will panic if the kT and vT types are incorrect.
+// func(k kT, v vT)
+//    Takes a key of key type and a value of value type.
+//    Is called with reflection and will panic if the kT and vT types are incorrect.
+// Range will panic if passed anything not matching these signatures.
+func (m *TMap) Range(do interface{}) {
+	fn := genRangeFunc(do)
+	m.root.rnge(fn)
+}
+
 type node interface {
 	assoc(edit *uint32, shift uint, hash uintptr,
 		k, v interface{}) (node, bool)
@@ -485,6 +503,7 @@ type node interface {
 		k interface{}) (node, bool)
 	find(shift uint, hash uintptr, k interface{}) (interface{}, bool)
 	seq() seq.Sequence
+	rnge(func(Entry) bool) bool
 }
 
 type entry struct {
