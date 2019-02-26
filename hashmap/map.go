@@ -450,6 +450,28 @@ func (m *TMap) Delete(key interface{}) *TMap {
 	return m
 }
 
+// Equal tests if two maps are Equal by comparing the entries of each.
+// Equal implements the Equaler which allows for deep
+// comparisons when there are maps of maps
+func (m *TMap) Equal(o interface{}) bool {
+	other, ok := o.(*TMap)
+	if !ok {
+		return ok
+	}
+	if m.Length() != other.Length() {
+		return false
+	}
+	foundAll := true
+	m.Range(func(key, value interface{}) bool {
+		if !dyn.Equal(other.At(key), value) {
+			foundAll = false
+			return false
+		}
+		return true
+	})
+	return foundAll
+}
+
 // Length returns the number of entries in the map.
 func (m *TMap) Length() int {
 	return m.count

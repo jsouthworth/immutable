@@ -1296,6 +1296,52 @@ func TestTransientAsPersistent(t *testing.T) {
 	properties.TestingRun(t)
 }
 
+func TestTransientEqual(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("m == m", prop.ForAll(
+		func(rm *rmap) bool {
+			return rm.m.AsTransient().Equal(rm.m.AsTransient())
+		},
+		genRandomMap,
+	))
+	properties.Property("new=m.Delete(k) -> new != m", prop.ForAll(
+		func(rm *rmap) bool {
+			var k string
+			rm.m.AsTransient().Range(func(key, val string) bool {
+				k = key
+				return false
+			})
+			new := rm.m.Delete(k)
+			return !rm.m.AsTransient().Equal(new.AsTransient())
+		},
+		genRandomMap.SuchThat(func(rm *rmap) bool {
+			return rm.m.Length() != 0
+		}),
+	))
+	properties.Property("m.Equal(10)==false", prop.ForAll(
+		func(rm *rmap) bool {
+			return !rm.m.AsTransient().Equal(10)
+		},
+		genRandomMap,
+	))
+	properties.Property("new=m.Assoc(k,v) -> new != m", prop.ForAll(
+		func(rm *rmap) bool {
+			var k string
+			rm.m.Range(func(key, val string) bool {
+				k = key
+				return false
+			})
+			new := rm.m.Assoc(k, "foo")
+			return !rm.m.AsTransient().Equal(new.AsTransient())
+		},
+		genRandomMap.SuchThat(func(rm *rmap) bool {
+			return rm.m.Length() != 0
+		}),
+	))
+	properties.TestingRun(t)
+}
+
 func TestTransientRange(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)
