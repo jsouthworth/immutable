@@ -964,6 +964,27 @@ func TestString(t *testing.T) {
 	properties.TestingRun(t)
 }
 
+func TestTransientString(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("Mutate makes expected changes", prop.ForAll(
+		func(m *Map) bool {
+			new := m.Transform(
+				func(t *TMap) *TMap {
+					return t.Assoc("foo", "bar")
+				},
+				func(t *TMap) *TMap {
+					return t.Assoc("bar", "baz")
+				},
+			).AsTransient()
+			return new.String() == "{ [foo bar] [bar baz] }" ||
+				new.String() == "{ [bar baz] [foo bar] }"
+		},
+		genMap,
+	))
+	properties.TestingRun(t)
+}
+
 func TestTransientAt(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)

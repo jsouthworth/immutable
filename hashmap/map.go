@@ -496,6 +496,17 @@ func (m *TMap) Range(do interface{}) {
 	m.root.rnge(fn)
 }
 
+// String returns a string representation of the map.
+func (m *TMap) String() string {
+	var b strings.Builder
+	fmt.Fprint(&b, "{ ")
+	m.Range(func(entry Entry) {
+		fmt.Fprintf(&b, "%s ", entry)
+	})
+	fmt.Fprint(&b, "}")
+	return b.String()
+}
+
 type node interface {
 	assoc(edit *uint32, shift uint, hash uintptr,
 		k, v interface{}) (node, bool)
