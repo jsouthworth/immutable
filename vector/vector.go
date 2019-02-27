@@ -191,6 +191,23 @@ func (v *Vector) Append(value interface{}) *Vector {
 	}
 }
 
+// Delete removes the element at the current index, shifting the others
+// down and yeilding a vector with one fewer elements.
+func (v *Vector) Delete(idx int) *Vector {
+	return v.Transform(func(t *TVector) *TVector {
+		return t.Delete(idx)
+	})
+}
+
+// Insert adds the value to the vector at the provided index shifting the
+// other values down. This yeilds a vector with an additional value at the
+// provided index.
+func (v *Vector) Insert(idx int, val interface{}) *Vector {
+	return v.Transform(func(t *TVector) *TVector {
+		return t.Insert(idx, val)
+	})
+}
+
 // Equal compares each value of the vector to determine if the vector is
 // equal to the one passed in.
 func (v *Vector) Equal(o interface{}) bool {
@@ -382,6 +399,18 @@ func genRangeFunc(do interface{}) func(int, interface{}) bool {
 func (v *Vector) Apply(args ...interface{}) interface{} {
 	idx := args[0].(int)
 	return v.At(idx)
+}
+
+// Transform takes a set of actions and performs them
+// on the persistent vector. It does this by making a transient
+// vector and calling each action on it, then converting it back
+// to a persistent vector.
+func (v *Vector) Transform(actions ...func(*TVector) *TVector) *Vector {
+	out := v.AsTransient()
+	for _, action := range actions {
+		out = action(out)
+	}
+	return out.AsPersistent()
 }
 
 func (v *Vector) tailOffset() int {
@@ -650,6 +679,34 @@ func (v *TVector) Range(do interface{}) {
 func (v *TVector) Apply(args ...interface{}) interface{} {
 	idx := args[0].(int)
 	return v.At(idx)
+}
+
+// Delete removes the element at the current index, shifting the others
+// down and yeilding a vector with one fewer elements.
+func (v *TVector) Delete(idx int) *TVector {
+	if idx < 0 || idx >= v.count {
+		panic(errOutOfBounds)
+	}
+
+	for i := idx; i < v.Length()-1; i++ {
+		v = v.Assoc(i, v.At(i+1))
+	}
+	return v.Pop()
+
+}
+
+// Insert adds the value to the vector at the provided index shifting the
+// other values down. This yeilds a vector with an additional value at the
+// provided index.
+func (v *TVector) Insert(idx int, val interface{}) *TVector {
+	if idx < 0 || idx >= v.count {
+		panic(errOutOfBounds)
+	}
+	v = v.Append(nil)
+	for i := v.Length() - 1; i > idx; i-- {
+		v = v.Assoc(i, v.At(i-1))
+	}
+	return v.Assoc(idx, val)
 }
 
 func (v *TVector) roomInTail() bool {

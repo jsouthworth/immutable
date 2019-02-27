@@ -1057,3 +1057,111 @@ func TestSliceApply(t *testing.T) {
 		t.Fatal("apply didn't return the expected result")
 	}
 }
+
+func TestTransform(t *testing.T) {
+	v := New(1, 2, 3, 4, 5)
+	v = v.Transform(func(t *TVector) *TVector {
+		for i := 0; i < v.Length()-1; i++ {
+			t = t.Assoc(i, v.At(i+1))
+		}
+		return t.Pop()
+	})
+	expected := New(2, 3, 4, 5)
+	if !v.Equal(expected) {
+		t.Fatalf("got %s, wanted %s\n", v, expected)
+	}
+}
+
+func TestDelete(t *testing.T) {
+	t.Run("Delete first", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5)
+		v = v.Delete(0)
+		expected := New(2, 3, 4, 5)
+		if !v.Equal(expected) {
+			t.Fatalf("got %s, wanted %s\n", v, expected)
+		}
+	})
+	t.Run("Delete middle", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5)
+		v = v.Delete(2)
+		expected := New(1, 2, 4, 5)
+		if !v.Equal(expected) {
+			t.Fatalf("got %s, wanted %s\n", v, expected)
+		}
+	})
+	t.Run("Delete last", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5)
+		v = v.Delete(v.Length() - 1)
+		expected := New(1, 2, 3, 4)
+		if !v.Equal(expected) {
+			t.Fatalf("got %s, wanted %s\n", v, expected)
+		}
+	})
+	t.Run("Delete oob", func(t *testing.T) {
+		defer func() {
+			err := recover()
+			if err != errOutOfBounds {
+				t.Fatal("did not panic on oob")
+			}
+		}()
+		v := New(1, 2, 3, 4, 5)
+		v = v.Delete(v.Length())
+	})
+	t.Run("Delete oob negative", func(t *testing.T) {
+		defer func() {
+			err := recover()
+			if err != errOutOfBounds {
+				t.Fatal("did not panic on oob")
+			}
+		}()
+		v := New(1, 2, 3, 4, 5)
+		v = v.Delete(-1)
+	})
+}
+
+func TestInsert(t *testing.T) {
+	t.Run("Insert first", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5)
+		v = v.Insert(0, 10)
+		expected := New(10, 1, 2, 3, 4, 5)
+		if !v.Equal(expected) {
+			t.Fatalf("got %s, wanted %s\n", v, expected)
+		}
+	})
+	t.Run("Insert middle", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5)
+		v = v.Insert(2, 10)
+		expected := New(1, 2, 10, 3, 4, 5)
+		if !v.Equal(expected) {
+			t.Fatalf("got %s, wanted %s\n", v, expected)
+		}
+	})
+	t.Run("Insert last", func(t *testing.T) {
+		v := New(1, 2, 3, 4, 5)
+		v = v.Insert(v.Length()-1, 10)
+		expected := New(1, 2, 3, 4, 10, 5)
+		if !v.Equal(expected) {
+			t.Fatalf("got %s, wanted %s\n", v, expected)
+		}
+	})
+	t.Run("Insert oob", func(t *testing.T) {
+		defer func() {
+			err := recover()
+			if err != errOutOfBounds {
+				t.Fatal("did not panic on oob")
+			}
+		}()
+		v := New(1, 2, 3, 4, 5)
+		v = v.Insert(v.Length(), 10)
+	})
+	t.Run("Insert oob negative", func(t *testing.T) {
+		defer func() {
+			err := recover()
+			if err != errOutOfBounds {
+				t.Fatal("did not panic on oob")
+			}
+		}()
+		v := New(1, 2, 3, 4, 5)
+		v = v.Insert(-1, 10)
+	})
+}
