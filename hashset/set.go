@@ -177,14 +177,17 @@ func (s *Set) Delete(elem interface{}) *Set {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (s *Set) Range(do interface{}) {
-	var rangefn func(interface{}, interface{}) bool
+	s.backingMap.Range(genRangeFunc(do))
+}
+
+func genRangeFunc(do interface{}) func(interface{}, interface{}) bool {
 	switch fn := do.(type) {
 	case func(value interface{}) bool:
-		rangefn = func(key, _ interface{}) bool {
+		return func(key, _ interface{}) bool {
 			return fn(key)
 		}
 	case func(value interface{}):
-		rangefn = func(key, _ interface{}) bool {
+		return func(key, _ interface{}) bool {
 			fn(key)
 			return true
 		}
@@ -201,7 +204,7 @@ func (s *Set) Range(do interface{}) {
 			rt.Out(0).Kind() != reflect.Bool {
 			panic(errRangeSig)
 		}
-		rangefn = func(key, _ interface{}) bool {
+		return func(key, _ interface{}) bool {
 			cont := true
 			out := dyn.Apply(do, key)
 			if out != nil {
@@ -210,7 +213,18 @@ func (s *Set) Range(do interface{}) {
 			return cont
 		}
 	}
-	s.backingMap.Range(rangefn)
+}
+
+// Transform takes a set of actions and performs them
+// on the persistent set. It does this by making a transient
+// set and calling each action on it, then converting it back
+// to a persistent set.
+func (s *Set) Transform(xfrms ...func(*TSet) *TSet) *Set {
+	t := s.AsTransient()
+	for _, xfrm := range xfrms {
+		t = xfrm(t)
+	}
+	return t.AsPersistent()
 }
 
 // Length returns the elements in the set.
@@ -242,6 +256,27 @@ func (s *Set) String() string {
 func (s *Set) Apply(args ...interface{}) interface{} {
 	key := args[0]
 	return s.At(key)
+}
+
+// Seq returns a seralized sequence of interface{}
+// corresponding to the set's elements.
+func (s *Set) Seq() seq.Sequence {
+	mSeq := s.backingMap.Seq()
+	if mSeq == nil {
+		return nil
+	}
+	return &setSeq{mSeq: mSeq}
+}
+
+// Equal tests if two sets are Equal by comparing the entries of each.
+// Equal implements the Equaler which allows for deep
+// comparisons when there are sets of sets
+func (s *Set) Equal(o interface{}) bool {
+	other, ok := o.(*Set)
+	if !ok {
+		return ok
+	}
+	return s.backingMap.Equal(other.backingMap)
 }
 
 // TSet is a transient copy on write version of Set. Changes made to a
@@ -288,6 +323,41 @@ func (s *TSet) Length() int {
 	return s.backingMap.Length()
 }
 
+// Range calls the passed in function on each element of the set.
+// The function passed in may be of many types:
+//
+// func(value interface{}) bool:
+//    Takes a value of any type and returns if the loop should continue.
+//    Useful to avoid reflection where not needed and to support
+//    heterogenous sets.
+// func(value interface{})
+//    Takes a value of any type.
+//    Useful to avoid reflection where not needed and to support
+//    heterogenous sets.
+// func(value T) bool:
+//    Takes a value of the type of element stored in the set and
+//    returns if the loop should continue. Useful for homogeneous sets.
+//    Is called with reflection and will panic if the type is incorrect.
+// func(value T)
+//    Takes a value of the type of element stored in the set and
+//    returns if the loop should continue. Useful for homogeneous sets.
+//    Is called with reflection and will panic if the type is incorrect.
+// Range will panic if passed anything that doesn't match one of these signatures
+func (s *TSet) Range(do interface{}) {
+	s.backingMap.Range(genRangeFunc(do))
+}
+
+// String returns a string serialization of the set.
+func (s *TSet) String() string {
+	var b strings.Builder
+	fmt.Fprint(&b, "{ ")
+	s.Range(func(elem interface{}) {
+		fmt.Fprintf(&b, "%v ", elem)
+	})
+	fmt.Fprint(&b, "}")
+	return b.String()
+}
+
 // AsPersistent will transform this transient set into a persistent set.
 // Once this occurs any additional actions on the transient set will fail.
 func (s *TSet) AsPersistent() *Set {
@@ -302,4 +372,32 @@ func (s *TSet) AsPersistent() *Set {
 func (s *TSet) Apply(args ...interface{}) interface{} {
 	key := args[0]
 	return s.At(key)
+}
+
+// Equal tests if two sets are Equal by comparing the entries of each.
+// Equal implements the Equaler which allows for deep
+// comparisons when there are sets of sets
+func (s *TSet) Equal(o interface{}) bool {
+	other, ok := o.(*TSet)
+	if !ok {
+		return ok
+	}
+	return s.backingMap.Equal(other.backingMap)
+}
+
+type setSeq struct {
+	mSeq seq.Sequence
+}
+
+func (s *setSeq) First() interface{} {
+	out := s.mSeq.First()
+	return out.(hashmap.Entry).Key()
+}
+
+func (s *setSeq) Next() seq.Sequence {
+	next := s.mSeq.Next()
+	if next == nil {
+		return nil
+	}
+	return &setSeq{mSeq: next}
 }

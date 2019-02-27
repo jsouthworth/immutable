@@ -201,6 +201,142 @@ func TestTSet(t *testing.T) {
 	properties.TestingRun(t)
 }
 
+func TestTSetRange(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("Range func(interface{})",
+		prop.ForAll(
+			func(a, b int) bool {
+				expected := a + b
+				l := Empty().AsTransient().Add(a).Add(b)
+				var got int
+				l.Range(func(i interface{}) {
+					got += i.(int)
+				})
+				return got == expected
+			},
+			gen.Int(),
+			gen.Int(),
+		))
+	properties.Property("Range func(interface{}) bool",
+		prop.ForAll(
+			func(a, b int) bool {
+				l := Empty().AsTransient().Add(a).Add(b)
+				var got int
+				l.Range(func(i interface{}) bool {
+					got += i.(int)
+					return false
+				})
+				return got == a || got == b
+			},
+			gen.Int(),
+			gen.Int(),
+		))
+	properties.Property("Range func(T)",
+		prop.ForAll(
+			func(a, b int) bool {
+				expected := a + b
+				l := Empty().AsTransient().Add(a).Add(b)
+				var got int
+				l.Range(func(i int) {
+					got += i
+				})
+				return got == expected
+			},
+			gen.Int(),
+			gen.Int(),
+		))
+	properties.Property("Range func(T) bool",
+		prop.ForAll(
+			func(a, b int) bool {
+				l := Empty().AsTransient().Add(a).Add(b)
+				var got int
+				l.Range(func(i int) bool {
+					got += i
+					return false
+				})
+				return got == a || got == b
+			},
+			gen.Int(),
+			gen.Int(),
+		))
+	properties.Property("Range func(T) T panics",
+		prop.ForAll(
+			func(a, b int) (ok bool) {
+				defer func() {
+					r := recover()
+					ok = r == errRangeSig
+				}()
+				expected := a
+				l := Empty().AsTransient().Add(a).Add(b)
+				var got int
+				l.Range(func(i int) int {
+					got += i
+					return got
+				})
+				return got == expected
+			},
+			gen.Int(),
+			gen.Int(),
+		))
+	properties.Property("Range func(T, T) bool panics",
+		prop.ForAll(
+			func(a, b int) (ok bool) {
+				defer func() {
+					r := recover()
+					ok = r == errRangeSig
+				}()
+				expected := a
+				l := Empty().AsTransient().Add(a).Add(b)
+				var got int
+				l.Range(func(i, j int) bool {
+					got += i
+					return true
+				})
+				return got == expected
+			},
+
+			gen.Int(),
+			gen.Int(),
+		))
+	properties.Property("Range func(T, T) (bool,bool) panics",
+		prop.ForAll(
+			func(a, b int) (ok bool) {
+				defer func() {
+					r := recover()
+					ok = r == errRangeSig
+				}()
+				expected := a
+				l := Empty().AsTransient().Add(a).Add(b)
+				var got int
+				l.Range(func(i, j int) (bool, bool) {
+					got += i
+					return true, false
+				})
+				return got == expected
+			},
+			gen.Int(),
+			gen.Int(),
+		))
+	properties.Property("Range(int) panics",
+		prop.ForAll(
+			func(a, b int) (ok bool) {
+				defer func() {
+					r := recover()
+					ok = r == errRangeSig
+				}()
+				expected := a
+				l := Empty().AsTransient().Add(a).Add(b)
+				var got int
+				l.Range(a)
+				return got == expected
+			},
+			gen.Int(),
+			gen.Int(),
+		))
+	properties.TestingRun(t)
+}
+
 func TestRange(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)
@@ -478,5 +614,80 @@ func TestString(t *testing.T) {
 	default:
 		t.Fatal("unexpected string", str)
 
+	}
+}
+
+func TestTSetString(t *testing.T) {
+	s := New(1, 2, 3).AsTransient()
+	str := s.String()
+	switch str {
+	case "{ 1 2 3 }":
+	case "{ 1 3 2 }":
+	case "{ 3 1 2 }":
+	case "{ 3 2 1 }":
+	case "{ 2 1 3 }":
+	case "{ 2 3 1 }":
+	default:
+		t.Fatal("unexpected string", str)
+
+	}
+}
+
+func TestSeq(t *testing.T) {
+	set := New(1, 2, 3, 4, 5)
+	s := set.Seq()
+	sum := 0
+	for s != nil {
+		elem := seq.First(s).(int)
+		sum += elem
+		s = seq.Seq(seq.Next(s))
+	}
+	if sum != 15 {
+		t.Fatal("Seq didn't traverse all the elements of the set")
+	}
+}
+
+func TestSeqEmpty(t *testing.T) {
+	set := Empty()
+	s := set.Seq()
+	if s != nil {
+		t.Fatal("Seq should have been nil")
+	}
+}
+
+func TestTransform(t *testing.T) {
+	set := New(1, 2, 3, 4, 5)
+	set = set.Transform(
+		func(in *TSet) *TSet {
+			return in.Add(6).Add(7).Add(8)
+		})
+	sum := 0
+	set.Range(func(elem int) {
+		sum = sum + elem
+	})
+	if sum != 36 {
+		t.Fatal("Transform didn't generate the expected set", sum)
+	}
+}
+
+func TestEqual(t *testing.T) {
+	s1 := New(1, 2, 3)
+	s2 := New(1, 2, 3)
+	if !s1.Equal(s2) {
+		t.Fatal("Sets should have been equal")
+	}
+	if s1.Equal(10) {
+		t.Fatal("Set should not have been equal to an int")
+	}
+}
+
+func TestTSetEqual(t *testing.T) {
+	s1 := New(1, 2, 3).AsTransient()
+	s2 := New(1, 2, 3).AsTransient()
+	if !s1.Equal(s2) {
+		t.Fatal("Sets should have been equal")
+	}
+	if s1.Equal(10) {
+		t.Fatal("Set should not have been equal to an int")
 	}
 }
