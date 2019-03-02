@@ -212,6 +212,17 @@ func (s *Stack) Transform(actions ...func(*TStack) *TStack) *Stack {
 	return out.AsPersistent()
 }
 
+// Equal tests if two sets are Equal by comparing the entries of each.
+// Equal implements the Equaler which allows for deep
+// comparisons.
+func (s *Stack) Equal(o interface{}) bool {
+	other, ok := o.(*Stack)
+	if !ok {
+		return ok
+	}
+	return s.backingVector.Equal(other.backingVector)
+}
+
 type stackSequence struct {
 	stack *Stack
 }

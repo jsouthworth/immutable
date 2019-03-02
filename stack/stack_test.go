@@ -434,3 +434,14 @@ func ExampleTransform() {
 	))
 	// Output: [ 3 2 1 ]
 }
+
+func TestEqual(t *testing.T) {
+	s1 := New(1, 2, 3)
+	s2 := New(1, 2, 3)
+	if !s1.Equal(s2) {
+		t.Fatal("Stacks should have been equal")
+	}
+	if s1.Equal(10) {
+		t.Fatal("Stack should not have been equal to an int")
+	}
+}
