@@ -7,6 +7,7 @@ import (
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
+	"jsouthworth.net/go/dyn"
 	"jsouthworth.net/go/immutable/vector"
 	"jsouthworth.net/go/seq"
 )
@@ -99,6 +100,19 @@ func TestQueueSeq(t *testing.T) {
 	if result != 6 {
 		t.Fatal("didn't get the expected result from reduce")
 	}
+}
+
+func TestQueueEqual(t *testing.T) {
+	q := New(1, 2, 3)
+	q2 := New(1, 2, 3)
+	if !dyn.Equal(q, q2) {
+		t.Fatal("the queues should have been equal")
+	}
+	q3 := New(3, 2, 1)
+	if dyn.Equal(q, q3) {
+		t.Fatal("the queues should not have been equal")
+	}
+
 }
 
 func TestRange(t *testing.T) {

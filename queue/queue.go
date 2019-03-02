@@ -184,6 +184,14 @@ func (q *Queue) Length() int {
 	return q.bv.Length()
 }
 
+// Equal returns whether the other value passed in is a queue and the
+// values of that queue are equal to its values.
+func (q *Queue) Equal(other interface{}) bool {
+	oq, isQueue := other.(*Queue)
+	return isQueue &&
+		q.bv.Equal(oq.bv)
+}
+
 type queueSeq struct {
 	queue *Queue
 }
