@@ -32,6 +32,55 @@ func New(elems ...interface{}) *List {
 	return out
 }
 
+// From will convert many go types to an immutable list.
+// Converting some types is more efficient than others and the
+// mechanisms are described below.
+//
+// *List:
+//    Returned directly as it is already immutable.
+// []interface{}:
+//    New is called with the elements.
+// seq.Sequable:
+//    Seq is called on the value and the list is built from the resulting sequence. This will reverse the sequence.
+// seq.Sequence:
+//    The list is built from the sequence. Care should be taken to provide finite sequences or the list will grow without bound. This will reverse the sequence.
+// []T:
+//    The slice is converted to a list using reflection.
+func From(value interface{}) *List {
+	switch v := value.(type) {
+	case *List:
+		return v
+	case []interface{}:
+		return New(v...)
+	case seq.Seqable:
+		return listFromSequence(seq.Seq(v))
+	case seq.Sequence:
+		return listFromSequence(v)
+	default:
+		return listFromReflection(v)
+	}
+}
+
+func listFromSequence(coll seq.Sequence) *List {
+	return seq.Reduce(func(result *List, input interface{}) *List {
+		return Cons(input, result)
+	}, Empty(), coll).(*List)
+}
+
+func listFromReflection(value interface{}) *List {
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Slice:
+		out := Empty()
+		for i := v.Len() - 1; i >= 0; i-- {
+			out = Cons(v.Index(i).Interface(), out)
+		}
+		return out
+	default:
+		return Empty()
+	}
+}
+
 // Cons constructs a new list from the element and another list.
 func Cons(elem interface{}, list *List) *List {
 	return &List{

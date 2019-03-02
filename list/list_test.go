@@ -9,6 +9,8 @@ import (
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
 	"jsouthworth.net/go/dyn"
+	"jsouthworth.net/go/immutable/vector"
+	"jsouthworth.net/go/seq"
 )
 
 func TestList(t *testing.T) {
@@ -230,6 +232,83 @@ func TestRange(t *testing.T) {
 				return got == expected
 			},
 			gen.Int(),
+		))
+	properties.TestingRun(t)
+}
+
+func TestListFrom(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("From([]interface{})",
+		prop.ForAll(
+			func(xs []interface{}) bool {
+				return dyn.Equal(From(xs), New(xs...))
+			},
+			gen.SliceOf(gen.Int(),
+				reflect.TypeOf((*interface{})(nil)).Elem()),
+		))
+	properties.Property("From([]int)",
+		prop.ForAll(
+			func(xs []int) bool {
+				l := From(xs)
+				for _, v := range xs {
+					lv := l.First()
+					l = l.Next()
+					if lv != v {
+						return false
+					}
+				}
+				return true
+			},
+			gen.SliceOf(gen.Int()),
+		))
+	properties.Property("From(Seq(xs)))",
+		prop.ForAll(
+			func(xs []int) bool {
+				l := From(seq.Seq(xs))
+				for i := len(xs) - 1; i >= 0; i-- {
+					v := xs[i]
+					lv := l.First()
+					l = l.Next()
+					if lv != v {
+						return false
+					}
+				}
+				return true
+			},
+			gen.SliceOf(gen.Int()),
+		))
+	properties.Property("From(New(xs...)))",
+		prop.ForAll(
+			func(xs []interface{}) bool {
+				l := From(New(xs...))
+				for _, v := range xs {
+					lv := l.First()
+					l = l.Next()
+					if lv != v {
+						return false
+					}
+				}
+				return true
+			},
+			gen.SliceOf(gen.Int(),
+				reflect.TypeOf((*interface{})(nil)).Elem()),
+		))
+	properties.Property("From(vector.From(xs)))",
+		prop.ForAll(
+			func(xs []int) bool {
+				l := From(vector.From(xs))
+				for i := len(xs) - 1; i >= 0; i-- {
+					v := xs[i]
+					lv := l.First()
+					l = l.Next()
+					if lv != v {
+						return false
+					}
+				}
+				return true
+			},
+			gen.SliceOf(gen.Int()),
 		))
 	properties.TestingRun(t)
 }
