@@ -2,11 +2,13 @@ package list
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
 	"github.com/leanovate/gopter/prop"
+	"jsouthworth.net/go/dyn"
 )
 
 func TestList(t *testing.T) {
@@ -59,7 +61,48 @@ func TestList(t *testing.T) {
 			gen.Int(),
 			gen.Int(),
 		))
+	properties.Property("s=Cons(a, nil).Length() == 1",
+		prop.ForAll(
+			func(a int) bool {
+				return Cons(a, nil).Length() == 1
+			},
+			gen.Int(),
+		))
+	properties.Property("s=Cons(a, New(xs)) == len(xs) + 1",
+		prop.ForAll(
+			func(a int, xs []interface{}) bool {
+				return Cons(a, New(xs...)).Length() ==
+					len(xs)+1
+			},
+			gen.Int(),
+			gen.SliceOf(gen.Int(),
+				reflect.TypeOf((*interface{})(nil)).Elem()),
+		))
+	properties.Property("New(xs) == New(xs)",
+		prop.ForAll(
+			func(xs []interface{}) bool {
+				return dyn.Equal(New(xs...), New(xs...))
+			},
+			gen.SliceOf(gen.Int(),
+				reflect.TypeOf((*interface{})(nil)).Elem()),
+		))
+	properties.Property("New(xs) != New(reverse(xs))",
+		prop.ForAll(
+			func(xs []interface{}) bool {
+				return !dyn.Equal(New(xs...), New(reverse(xs)...))
+			},
+			gen.SliceOfN(100, gen.Int(),
+				reflect.TypeOf((*interface{})(nil)).Elem()),
+		))
 	properties.TestingRun(t)
+}
+
+func reverse(xs []interface{}) []interface{} {
+	for i := len(xs)/2 - 1; i >= 0; i-- {
+		opp := len(xs) - 1 - i
+		xs[i], xs[opp] = xs[opp], xs[i]
+	}
+	return xs
 }
 
 func TestRange(t *testing.T) {

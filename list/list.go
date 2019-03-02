@@ -15,6 +15,7 @@ var errRangeSig = errors.New("Range requires a function: func(v vT) bool or func
 type List struct {
 	first interface{}
 	next  *List
+	len   int
 }
 
 // Empty returns the empty list (nil).
@@ -36,6 +37,7 @@ func Cons(elem interface{}, list *List) *List {
 	return &List{
 		first: elem,
 		next:  list,
+		len:   list.Length() + 1,
 	}
 }
 
@@ -63,6 +65,14 @@ func (l *List) Find(value interface{}) (interface{}, bool) {
 		return true
 	})
 	return out, found
+}
+
+// Length returns the number of members of the list
+func (l *List) Length() int {
+	if l == nil {
+		return 0
+	}
+	return l.len
 }
 
 // Range calls the passed in function on each element of the list.
@@ -134,6 +144,29 @@ func (l *List) Seq() seq.Sequence {
 // String returns a string representation of the list.
 func (l *List) String() string {
 	return seq.ConvertToString(l.Seq())
+}
+
+// Equal returns whether the other value is a list, and all the values
+// are equal to their corresponding partner in the other list.
+func (l *List) Equal(other interface{}) bool {
+	ol, isList := other.(*List)
+	return isList &&
+		ol.Length() == l.Length() &&
+		l.elementsAreEqual(ol)
+}
+
+func (l *List) elementsAreEqual(ol *List) bool {
+	allEqual := true
+	l.Range(func(val interface{}) bool {
+		oval := ol.First()
+		ol = ol.Next()
+		if !dyn.Equal(val, oval) {
+			allEqual = false
+			return false
+		}
+		return true
+	})
+	return allEqual
 }
 
 type listSequence struct {
