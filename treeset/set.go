@@ -251,6 +251,17 @@ func (s *Set) Seq() seq.Sequence {
 	return &setSeq{mSeq: mSeq}
 }
 
+// Equal tests if two sets are Equal by comparing the entries of each.
+// Equal implements the Equaler which allows for deep
+// comparisons when there are sets of sets
+func (s *Set) Equal(o interface{}) bool {
+	other, ok := o.(*Set)
+	if !ok {
+		return ok
+	}
+	return s.backingMap.Equal(other.backingMap)
+}
+
 type setSeq struct {
 	mSeq seq.Sequence
 }
