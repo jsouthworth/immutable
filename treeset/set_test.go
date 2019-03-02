@@ -397,3 +397,25 @@ func TestString(t *testing.T) {
 
 	}
 }
+
+func TestSeq(t *testing.T) {
+	set := New(1, 2, 3, 4, 5)
+	s := set.Seq()
+	sum := 0
+	for s != nil {
+		elem := seq.First(s).(int)
+		sum += elem
+		s = seq.Seq(seq.Next(s))
+	}
+	if sum != 15 {
+		t.Fatal("Seq didn't traverse all the elements of the set")
+	}
+}
+
+func TestSeqEmpty(t *testing.T) {
+	set := Empty()
+	s := set.Seq()
+	if s != nil {
+		t.Fatal("Seq should have been nil")
+	}
+}

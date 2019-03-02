@@ -240,3 +240,30 @@ func (s *Set) Apply(args ...interface{}) interface{} {
 	k := args[0]
 	return s.At(k)
 }
+
+// Seq returns a seralized sequence of interface{}
+// corresponding to the set's elements.
+func (s *Set) Seq() seq.Sequence {
+	mSeq := s.backingMap.Seq()
+	if mSeq == nil {
+		return nil
+	}
+	return &setSeq{mSeq: mSeq}
+}
+
+type setSeq struct {
+	mSeq seq.Sequence
+}
+
+func (s *setSeq) First() interface{} {
+	out := s.mSeq.First()
+	return out.(treemap.Entry).Key()
+}
+
+func (s *setSeq) Next() seq.Sequence {
+	next := s.mSeq.Next()
+	if next == nil {
+		return nil
+	}
+	return &setSeq{mSeq: next}
+}
