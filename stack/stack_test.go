@@ -425,3 +425,12 @@ func ExampleSeqString() {
 	fmt.Println(New(1, 2, 3, 4).Seq())
 	// Output: (4 3 2 1)
 }
+
+func ExampleTransform() {
+	fmt.Println(Empty().Transform(
+		func(in *TStack) *TStack {
+			return in.Push(1).Push(2).Push(3)
+		},
+	))
+	// Output: [ 3 2 1 ]
+}

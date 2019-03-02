@@ -200,6 +200,18 @@ func (s *Stack) String() string {
 	return b.String()
 }
 
+// Transform takes a set of actions and performs them
+// on the persistent stack. It does this by making a transient
+// stack and calling each action on it, then converting it back
+// to a persistent vector.
+func (s *Stack) Transform(actions ...func(*TStack) *TStack) *Stack {
+	out := s.AsTransient()
+	for _, action := range actions {
+		out = action(out)
+	}
+	return out.AsPersistent()
+}
+
 type stackSequence struct {
 	stack *Stack
 }
