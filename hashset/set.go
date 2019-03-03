@@ -1,4 +1,9 @@
 // Package hashset implements an immutable Set datastructure on top of hashmap
+//
+// A note about Value equality. If you would like to override
+// the default go equality operator for values in this  library
+// implement the Equal(other interface{}) bool function for the type.
+// Otherwise '==' will be used with all its restrictions.
 package hashset // import "jsouthworth.net/go/immutable/hashset"
 
 import (
