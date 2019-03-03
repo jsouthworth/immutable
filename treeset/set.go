@@ -1,4 +1,8 @@
 // Package treeset implements an immutable Set datastructure on top of treemap
+//
+// A note about Value comparability, by default, go's comparison operators
+// will be used for any comparable type. Any type may implement the
+// Compare(other interface{}) int interface to override this requirement.
 package treeset // import "jsouthworth.net/go/immutable/treeset"
 
 import (
