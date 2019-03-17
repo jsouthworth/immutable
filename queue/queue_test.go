@@ -245,12 +245,93 @@ func TestRange(t *testing.T) {
 	properties.TestingRun(t)
 }
 
-func ExampleString() {
+func ExampleQueue_String() {
 	fmt.Println(New(1, 2, 3, 4, 5, 6))
 	// Output: [ 1 2 3 4 5 6 ]
 }
 
-func ExampleSeqString() {
+func ExampleQueue_Seq_string() {
 	fmt.Println(New(1, 2, 3, 4, 5, 6).Seq())
 	// Output: (1 2 3 4 5 6)
+}
+
+func ExampleFrom() {
+	q := From([]interface{}{1, 2, 3, 4})
+	fmt.Println(q)
+	// Output [ 1 2 3 4 ]
+}
+
+func ExampleNew() {
+	q := New(1, 2, 3, 4)
+	fmt.Println(q)
+	// Output [ 1 2 3 4 ]
+}
+
+func ExampleQueue_First() {
+	q := New(1, 2, 3, 4)
+	v := q.First()
+	fmt.Println(v)
+	// Output: 1
+}
+
+func ExampleQueue_Push() {
+	q := New(1, 2, 3, 4)
+	q = q.Push(5)
+	fmt.Println(q)
+	// Output: [ 1 2 3 4 5 ]
+}
+
+func ExampleQueue_Pop() {
+	q := New(1, 2, 3, 4)
+	q = q.Pop()
+	fmt.Println(q)
+	// Output: [ 2 3 4 ]
+}
+
+func ExampleQueue_Range_interface() {
+	q := New(1, 2, 3, 4)
+	q.Range(func(v interface{}) {
+		fmt.Println(v)
+	})
+	// Output: 1
+	// 2
+	// 3
+	// 4
+}
+
+func ExampleQueue_Range_interfaceContinue() {
+	q := New(1, 2, 3, 4)
+	q.Range(func(v interface{}) bool {
+		if v == 3 {
+			return false
+		}
+		fmt.Println(v)
+		return true
+	})
+	// Output: 1
+	// 2
+}
+
+func ExampleQueue_Range_type() {
+	q := New(1, 2, 3, 4)
+	q.Range(func(v int) {
+		fmt.Println(v)
+	})
+	// Output: 1
+	// 2
+	// 3
+	// 4
+}
+
+func ExampleQueue_Range_typeContinue() {
+	q := New(1, 2, 3, 4)
+	q.Range(func(v int) bool {
+		if v == 3 {
+			return false
+		}
+		fmt.Println(v)
+		return true
+	})
+	// Output: 1
+	// 2
 }
