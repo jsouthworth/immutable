@@ -43,12 +43,16 @@ func New(elems ...interface{}) *Queue {
 //    The queue unmodified
 // []interface{}:
 //    A queue with the elements of the slice passed to New.
+// []int:
+//    A queue with the elements of the slice is created.
 // seq.Seqable:
 //    A queue populated with the sequence returned by Seq.
 // seq.Sequence:
 //    A queue populated with the elements of the sequence.
 //    Care should be taken to provide finite sequences or the
 //    queue will grow without bound.
+// Other:
+//    Returns Empty()
 func From(value interface{}) *Queue {
 	if value == nil {
 		return Empty()
@@ -63,7 +67,21 @@ func From(value interface{}) *Queue {
 	case seq.Sequence:
 		return queueFromSequence(v)
 	default:
-		panic(errors.New("cannot convert supplied value to a queue"))
+		return queueFromReflection(value)
+	}
+}
+
+func queueFromReflection(value interface{}) *Queue {
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Slice:
+		out := Empty()
+		for i := 0; i < v.Len(); i++ {
+			out = out.Push(v.Index(i).Interface())
+		}
+		return out
+	default:
+		return Empty()
 	}
 }
 

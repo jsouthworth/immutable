@@ -46,6 +46,12 @@ func TestQueueFrom(t *testing.T) {
 			t.Fatal("from didn't didn't create the right queue")
 		}
 	})
+	t.Run("[]int", func(t *testing.T) {
+		q := From([]int{1, 2, 3})
+		if q.First() != 1 {
+			t.Fatal("from didn't didn't create the right queue")
+		}
+	})
 	t.Run("Seqable", func(t *testing.T) {
 		q := From(vector.New(1, 2, 3))
 		for i := 0; i < 3; i++ {
@@ -65,13 +71,10 @@ func TestQueueFrom(t *testing.T) {
 		}
 	})
 	t.Run("Other", func(t *testing.T) {
-		defer func() {
-			e := recover().(error)
-			if e == nil {
-				t.Fatal("didn't get expected error")
-			}
-		}()
-		From(1)
+		q := From(1)
+		if q != Empty() {
+			t.Fatal("didn't get expected queue")
+		}
 	})
 }
 
@@ -255,10 +258,22 @@ func ExampleQueue_Seq_string() {
 	// Output: (1 2 3 4 5 6)
 }
 
-func ExampleFrom() {
+func ExampleFrom_sliceOfInterface() {
 	q := From([]interface{}{1, 2, 3, 4})
 	fmt.Println(q)
 	// Output [ 1 2 3 4 ]
+}
+
+func ExampleFrom_sliceOfInt() {
+	q := From([]int{1, 2, 3, 4})
+	fmt.Println(q)
+	// Output [ 1 2 3 4 ]
+}
+
+func ExampleFrom_int() {
+	q := From(1)
+	fmt.Println(q)
+	// Output [ ]
 }
 
 func ExampleNew() {
