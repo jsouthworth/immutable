@@ -1619,4 +1619,9 @@ func TestComparableTypes(t *testing.T) {
 		val := func() {}
 		_ = Empty().Assoc("a", val).Assoc("a", val)
 	})
+	t.Run("nil values can be incomparable", func(t *testing.T) {
+		val := func() {}
+		_ = Empty().Assoc("a", nil).Assoc("a", val)
+		_ = Empty().Assoc("a", val).Assoc("a", nil)
+	})
 }

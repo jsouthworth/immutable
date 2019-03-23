@@ -716,6 +716,9 @@ func atomicOne() *uint32 {
 }
 
 func equalValues(one, two interface{}) bool {
+	if one == nil {
+		return dyn.Equal(one, two)
+	}
 	switch one.(type) {
 	case dyn.Equaler:
 	default:
