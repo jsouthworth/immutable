@@ -21,7 +21,7 @@ func (n *hashCollisionNode) assoc(
 	if hash == n.hash {
 		idx, ok := n.findIndex(k)
 		if ok {
-			if dyn.Equal(n.array[idx].v, v) {
+			if equalValues(n.array[idx].v, v) {
 				return n, false
 			}
 			return n.editAndSet(edit, idx, v), false

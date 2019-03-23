@@ -241,7 +241,7 @@ func (m *Map) Equal(o interface{}) bool {
 	}
 	foundAll := true
 	m.Range(func(key, value interface{}) bool {
-		if !dyn.Equal(other.At(key), value) {
+		if !equalValues(other.At(key), value) {
 			foundAll = false
 			return false
 		}
@@ -463,7 +463,7 @@ func (m *TMap) Equal(o interface{}) bool {
 	}
 	foundAll := true
 	m.Range(func(key, value interface{}) bool {
-		if !dyn.Equal(other.At(key), value) {
+		if !equalValues(other.At(key), value) {
 			foundAll = false
 			return false
 		}
@@ -713,4 +713,17 @@ func atomicZero() *uint32 {
 
 func atomicOne() *uint32 {
 	return atomicUint(1)
+}
+
+func equalValues(one, two interface{}) bool {
+	switch one.(type) {
+	case dyn.Equaler:
+	default:
+		// if Values are incomparable don't panic just
+		// return false. Keys must be comparable though
+		if !reflect.TypeOf(one).Comparable() {
+			return false
+		}
+	}
+	return dyn.Equal(one, two)
 }

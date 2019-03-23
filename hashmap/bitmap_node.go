@@ -76,7 +76,7 @@ func (n *bitmapIndexedNode) assocExisting(
 		return editable, added
 	case e.matches(k):
 		// A key replacement
-		if dyn.Equal(v, e.v) {
+		if equalValues(v, e.v) {
 			return n, false
 		}
 		editable := n.ensureEditable(edit)

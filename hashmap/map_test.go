@@ -1603,3 +1603,20 @@ func TestSeqString(t *testing.T) {
 			out)
 	}
 }
+
+func TestComparableTypes(t *testing.T) {
+	t.Run("keys must be comparable", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatal("incompatible keys should have failed")
+			}
+		}()
+		key := func() {}
+		_ = Empty().Assoc(key, "").Assoc(key, "")
+	})
+	t.Run("values can be incomparable", func(t *testing.T) {
+		val := func() {}
+		_ = Empty().Assoc("a", val).Assoc("a", val)
+	})
+}
