@@ -716,17 +716,5 @@ func atomicOne() *uint32 {
 }
 
 func equalValues(one, two interface{}) bool {
-	if one == nil {
-		return dyn.Equal(one, two)
-	}
-	switch one.(type) {
-	case dyn.Equaler:
-	default:
-		// if Values are incomparable don't panic just
-		// return false. Keys must be comparable though
-		if !reflect.TypeOf(one).Comparable() {
-			return false
-		}
-	}
-	return dyn.Equal(one, two)
+	return dyn.EqualNonComparable(one, two)
 }
