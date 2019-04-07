@@ -129,6 +129,12 @@ func (s *Set) Add(elem interface{}) *Set {
 	}
 }
 
+// Conj adds an element to the set. Conj implements
+// a generic mechanism for building collections.
+func (s *Set) Conj(elem interface{}) interface{} {
+	return s.Add(elem)
+}
+
 // At returns the elem if it exists in the set otherwise it returns nil.
 func (s *Set) At(elem interface{}) interface{} {
 	if s.backingMap.Contains(elem) {
