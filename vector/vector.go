@@ -191,6 +191,12 @@ func (v *Vector) Append(value interface{}) *Vector {
 	}
 }
 
+// Conj will extend the vector and associates the value with new last
+// element. Conj implements a generic mechanism for building collections.
+func (v *Vector) Conj(elem interface{}) interface{} {
+	return v.Append(elem)
+}
+
 // Delete removes the element at the current index, shifting the others
 // down and yeilding a vector with one fewer elements.
 func (v *Vector) Delete(idx int) *Vector {
@@ -581,6 +587,12 @@ func (v *TVector) Append(value interface{}) *TVector {
 
 	v.count = v.count + 1
 	return v
+}
+
+// Conj will extend the vector and associates the value with new last
+// element. Conj implements a generic mechanism for building collections.
+func (v *TVector) Conj(elem interface{}) interface{} {
+	return v.Append(elem)
 }
 
 // Pop removes the last element of the vector.
@@ -977,6 +989,12 @@ func (s *Slice) Append(v interface{}) *Slice {
 		start:  s.start,
 		end:    s.end + 1,
 	}
+}
+
+// Conj will extend the vector and associates the value with new last
+// element. Conj implements a generic mechanism for building collections.
+func (s *Slice) Conj(elem interface{}) interface{} {
+	return s.Append(elem)
 }
 
 // Assoc associates the value with the index in an immutable copy of the vector

@@ -1165,3 +1165,27 @@ func TestInsert(t *testing.T) {
 		v = v.Insert(-1, 10)
 	})
 }
+
+func TestConj(t *testing.T) {
+	t.Run("Vector", func(t *testing.T) {
+		v := New(1, 2, 3, 4)
+		new := v.Conj(5)
+		if new.(*Vector).At(4) != 5 {
+			t.Fatal("Conj didn't append")
+		}
+	})
+	t.Run("TVector", func(t *testing.T) {
+		v := New(1, 2, 3, 4).AsTransient()
+		new := v.Conj(5)
+		if new.(*TVector).At(4) != 5 {
+			t.Fatal("Conj didn't append")
+		}
+	})
+	t.Run("Slice", func(t *testing.T) {
+		v := New(1, 2, 3, 4).Slice(0, 4)
+		new := v.Conj(5)
+		if new.(*Slice).At(4) != 5 {
+			t.Fatal("Conj didn't append")
+		}
+	})
+}
