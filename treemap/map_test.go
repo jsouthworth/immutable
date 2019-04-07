@@ -490,6 +490,21 @@ func TestAssoc(t *testing.T) {
 	properties.TestingRun(t)
 }
 
+func TestConj(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("new = empty.Conj(k,v) -> new != empty ", prop.ForAll(
+		func(m *Map, k, v string) bool {
+			new := m.Conj(EntryNew(k, v))
+			return new != m
+		},
+		genMap,
+		gen.Identifier(),
+		gen.Identifier(),
+	))
+	properties.TestingRun(t)
+}
+
 func TestDelete(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)

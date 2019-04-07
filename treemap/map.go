@@ -19,6 +19,11 @@ type Entry interface {
 	Value() interface{}
 }
 
+// EntryNew returns an Entry
+func EntryNew(key, value interface{}) Entry {
+	return entry{key, value}
+}
+
 // Map is a persistent immutable map based on Red/Black
 // trees. Operations on map returns a new map that shares much of the
 // structure with the original map.
@@ -203,6 +208,12 @@ func (m *Map) Assoc(key, value interface{}) *Map {
 			count:   m.count,
 		}
 	}
+}
+
+// Conj associates a value with a key in the map.
+func (m *Map) Conj(elem interface{}) interface{} {
+	entry := elem.(Entry)
+	return m.Assoc(entry.Key(), entry.Value())
 }
 
 // Delete removes a key and associated value from the map.
