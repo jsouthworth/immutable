@@ -35,6 +35,17 @@ func TestList(t *testing.T) {
 			},
 			gen.Int(),
 		))
+	properties.Property("s=Cons(a,nil).Conj(a) -> s.First()==a and s.Next()!=nil",
+		prop.ForAll(
+			func(a int) bool {
+				l := Cons(a, Empty()).Conj(a).(*List)
+				return l.First() == a &&
+					l.Next() != nil &&
+					l.Next().First() == a &&
+					l.Next().Next() == nil
+			},
+			gen.Int(),
+		))
 	properties.Property("s=Cons(a,nil).Seq() -> s.First()==a and s.Next()==nil",
 		prop.ForAll(
 			func(a int) bool {

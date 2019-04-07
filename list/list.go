@@ -83,11 +83,22 @@ func listFromReflection(value interface{}) *List {
 
 // Cons constructs a new list from the element and another list.
 func Cons(elem interface{}, list *List) *List {
+	return list.Cons(elem)
+}
+
+// Cons constructs a new list from the element and another list.
+func (l *List) Cons(elem interface{}) *List {
 	return &List{
 		first: elem,
-		next:  list,
-		len:   list.Length() + 1,
+		next:  l,
+		len:   l.Length() + 1,
 	}
+}
+
+// Conj constructs a new list from the element and another list.
+// Conj implements a generic mechanism for building collections.
+func (l *List) Conj(elem interface{}) interface{} {
+	return l.Cons(elem)
 }
 
 // First returns the first element of a list.
