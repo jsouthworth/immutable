@@ -81,6 +81,12 @@ func (s *Stack) Push(elem interface{}) *Stack {
 	}
 }
 
+// Conj returns a new stack with the element as the top of the stack.
+// Conj implements a generic mechanism for building collections.
+func (s *Stack) Conj(elem interface{}) interface{} {
+	return s.Push(elem)
+}
+
 // Pop returns a new stack without the top element
 func (s *Stack) Pop() *Stack {
 	v := s.backingVector.Pop()

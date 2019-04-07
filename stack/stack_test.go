@@ -42,6 +42,16 @@ func TestStack(t *testing.T) {
 				reflect.TypeOf((*interface{})(nil)).Elem()),
 			gen.Int(),
 		))
+	properties.Property("s=New(is).Conj(a) -> s.Pop() != Empty())",
+		prop.ForAll(
+			func(as []interface{}, a int) bool {
+				s := New(as...).Conj(a).(*Stack)
+				return s.Pop() != Empty()
+			},
+			gen.SliceOfN(10, gen.Int(),
+				reflect.TypeOf((*interface{})(nil)).Elem()),
+			gen.Int(),
+		))
 	properties.Property("s=From(is).Push(a) -> s.Pop() != Empty())",
 		prop.ForAll(
 			func(as []interface{}, a int) bool {
