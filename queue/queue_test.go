@@ -26,6 +26,20 @@ func TestQueuePushPop(t *testing.T) {
 	}
 }
 
+func TestQueueConjPop(t *testing.T) {
+	q := New(1, 2, 3)
+	q = q.Conj(4).(*Queue)
+	for i := 0; i < 4; i++ {
+		if q.First() != i+1 {
+			t.Fatal("didn't get expected queue")
+		}
+		q = q.Pop()
+	}
+	if q.Length() != 0 {
+		t.Fatal("pop didn't remove all elements")
+	}
+}
+
 func TestQueueFrom(t *testing.T) {
 	t.Run("*Queue", func(t *testing.T) {
 		q := New(1, 2, 3)

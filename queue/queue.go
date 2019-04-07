@@ -98,6 +98,12 @@ func (q *Queue) Push(elem interface{}) *Queue {
 	}
 }
 
+// Conj returns a Queue with the element added to the end.
+// Conj implements a generic mechanism for building collections.
+func (q *Queue) Conj(elem interface{}) interface{} {
+	return q.Push(elem)
+}
+
 // Pop returns a queue with the first element removed.
 func (q *Queue) Pop() *Queue {
 	new := q.bv.Slice(1, q.bv.Length())
