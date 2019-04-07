@@ -528,6 +528,31 @@ func TestAssoc(t *testing.T) {
 	properties.TestingRun(t)
 }
 
+func TestConj(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("new = empty.Assoc(k,v) -> new != empty ", prop.ForAll(
+		func(m *Map, k, v string) bool {
+			new := m.Conj(EntryNew(k, v))
+			return new != m
+		},
+		genMap,
+		gen.Identifier(),
+		gen.Identifier(),
+	))
+	properties.Property("new=empty.Assoc(k, v) -> new.At(k)==v", prop.ForAll(
+		func(m *Map, k, v string) bool {
+			new := m.Conj(EntryNew(k, v))
+			got := new.(*Map).At(k)
+			return got == v
+		},
+		genMap,
+		gen.Identifier(),
+		gen.Identifier(),
+	))
+	properties.TestingRun(t)
+}
+
 func TestAsTransient(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)
@@ -1168,6 +1193,23 @@ func TestTransientAssoc(t *testing.T) {
 			return true
 		},
 		genLargeMap,
+	))
+	properties.TestingRun(t)
+}
+
+func TestTransientConj(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("new=empty.Assoc(k, v) -> new.At(k)==v", prop.ForAll(
+		func(m *Map, k, v string) bool {
+			t := m.AsTransient()
+			new := t.Conj(EntryNew(k, v))
+			got := new.(*TMap).At(k)
+			return got == v
+		},
+		genMap,
+		gen.Identifier(),
+		gen.Identifier(),
 	))
 	properties.TestingRun(t)
 }
