@@ -579,7 +579,7 @@ func (e entry) isLeaf() bool {
 }
 
 func (e entry) matches(k interface{}) bool {
-	return dyn.Equal(k, e.k)
+	return dyn.EqualNonComparable(k, e.k)
 }
 
 type entries []entry
