@@ -22,6 +22,7 @@ const (
 var errTafterP = errors.New("transient used after persistent call")
 var errOddElements = errors.New("must supply an even number elements")
 var errRangeSig = errors.New("Range requires a function: func(k kT, v vT) bool or func(k kT, v vT)")
+var errReduceSig = errors.New("Reduce requires a function: func(init iT, k kT, v vT) oT or func(init iT, e Entry) oT")
 
 var zero = atomicZero()
 
@@ -336,6 +337,55 @@ func genRangeFunc(do interface{}) func(Entry) bool {
 	}
 }
 
+// Reduce is a fast mechanism for reducing a Map. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, entry Entry) interface{}
+// func(init interface{}, key interface{}, value interface{}) interface{}
+// func(init iT, e Entry) oT
+// func(init iT, k kT, v vT) oT
+// Reduce will panic if given any other function type.
+func (m *Map) Reduce(fn interface{}, init interface{}) interface{} {
+	res := init
+	rFn := genReduceFunc(fn)
+	m.Range(func(e Entry) {
+		res = rFn(res, e)
+	})
+	return res
+}
+
+func genReduceFunc(fn interface{}) func(interface{}, Entry) interface{} {
+	switch v := fn.(type) {
+	case func(interface{}, Entry) interface{}:
+		return v
+	case func(interface{}, interface{}, interface{}) interface{}:
+		return func(init interface{}, entry Entry) interface{} {
+			return v(init, entry.Key(), entry.Value())
+		}
+	default:
+		rv := reflect.ValueOf(fn)
+		if rv.Kind() != reflect.Func {
+			panic(errReduceSig)
+		}
+		rt := rv.Type()
+		if rt.NumOut() != 1 {
+			panic(errReduceSig)
+		}
+		switch rt.NumIn() {
+		case 2:
+			return func(i interface{}, e Entry) interface{} {
+				return dyn.Apply(fn, i, e)
+			}
+		case 3:
+			return func(i interface{}, e Entry) interface{} {
+				return dyn.Apply(fn, i, e.Key(), e.Value())
+			}
+		default:
+			panic(errReduceSig)
+		}
+	}
+}
+
 // Seq returns a seralized sequence of Entry
 // corresponding to the maps entries.
 func (m *Map) Seq() seq.Sequence {
@@ -535,6 +585,23 @@ func (m *TMap) ensureEditable() {
 func (m *TMap) Range(do interface{}) {
 	fn := genRangeFunc(do)
 	m.root.rnge(fn)
+}
+
+// Reduce is a fast mechanism for reducing a Map. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, entry Entry) interface{}
+// func(init interface{}, key interface{}, value interface{}) interface{}
+// func(init iT, e Entry) oT
+// func(init iT, k kT, v vT) oT
+// Reduce will panic if given any other function type.
+func (m *TMap) Reduce(fn interface{}, init interface{}) interface{} {
+	res := init
+	rFn := genReduceFunc(fn)
+	m.Range(func(e Entry) {
+		res = rFn(res, e)
+	})
+	return res
 }
 
 // String returns a string representation of the map.

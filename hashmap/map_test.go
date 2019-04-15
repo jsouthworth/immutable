@@ -1661,3 +1661,90 @@ func TestComparableTypes(t *testing.T) {
 		_ = Empty().Assoc("a", val).Assoc("a", nil)
 	})
 }
+
+func TestReduce(t *testing.T) {
+	// This is a quick test of reduce since the underlying mechanisms
+	// are tested thoroughly elsewhere
+
+	t.Run("func(init interface{}, entry Entry) interface{}",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res interface{}, entry Entry) interface{} {
+				return res.(int) + entry.Value().(int)
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("func(init, k, v interface{}) interface{}",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res, k, v interface{}) interface{} {
+				return res.(int) + v.(int)
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("func(init int, e Entry) int",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res int, e Entry) int {
+				return res + e.Value().(int)
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("func(init, k, v int) int",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res, k, v int) int {
+				return res + v
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("int panics", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			_ = r.(error)
+		}()
+		m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+		_ = m.Reduce(0, 0)
+	})
+	t.Run("func(init, k, v int) (int, bool) panics",
+		func(t *testing.T) {
+			defer func() {
+				r := recover()
+				_ = r.(error)
+			}()
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			_ = m.Reduce(func(res, k, v int) (int, bool) {
+				return res + v, true
+			}, 0)
+		})
+	t.Run("func(init, k, v, t int) int panics",
+		func(t *testing.T) {
+			defer func() {
+				r := recover()
+				_ = r.(error)
+			}()
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			_ = m.Reduce(func(res, k, v, t int) int {
+				return res + v
+			}, 0)
+		})
+
+	t.Run("Transient func(init, k, v int) int",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5).AsTransient()
+			out := m.Reduce(func(res, k, v int) int {
+				return res + v
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+}
