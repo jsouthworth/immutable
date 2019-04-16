@@ -18,6 +18,7 @@ import (
 )
 
 var errRangeSig = errors.New("Range requires a function: func(v vT) bool or func(v vT)")
+var errReduceSig = errors.New("Reduce requires a function: func(init iT, v vT) oT")
 
 // Set is a persistent unordered set implementation.
 type Set struct {
@@ -226,6 +227,41 @@ func genRangeFunc(do interface{}) func(interface{}, interface{}) bool {
 	}
 }
 
+// Reduce is a fast mechanism for reducing a Map. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, value interface{}) interface{}
+// func(init iT, v vT) oT
+//
+// Reduce will panic if given any other function type.
+func (s *Set) Reduce(fn interface{}, init interface{}) interface{} {
+	return s.backingMap.Reduce(genReduceFunc(fn), init)
+}
+
+func genReduceFunc(fn interface{}) func(r, k, v interface{}) interface{} {
+	switch f := fn.(type) {
+	case func(res, val interface{}) interface{}:
+		return func(r, v, _ interface{}) interface{} {
+			return f(r, v)
+		}
+	default:
+		rv := reflect.ValueOf(fn)
+		if rv.Kind() != reflect.Func {
+			panic(errReduceSig)
+		}
+		rt := rv.Type()
+		if rt.NumIn() != 2 {
+			panic(errReduceSig)
+		}
+		if rt.NumOut() != 1 {
+			panic(errReduceSig)
+		}
+		return func(r, v, _ interface{}) interface{} {
+			return dyn.Apply(f, r, v)
+		}
+	}
+}
+
 // Transform takes a set of actions and performs them
 // on the persistent set. It does this by making a transient
 // set and calling each action on it, then converting it back
@@ -362,6 +398,17 @@ func (s *TSet) Length() int {
 // Range will panic if passed anything that doesn't match one of these signatures
 func (s *TSet) Range(do interface{}) {
 	s.backingMap.Range(genRangeFunc(do))
+}
+
+// Reduce is a fast mechanism for reducing a Map. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, value interface{}) interface{}
+// func(init iT, v vT) oT
+//
+// Reduce will panic if given any other function type.
+func (s *TSet) Reduce(fn interface{}, init interface{}) interface{} {
+	return s.backingMap.Reduce(genReduceFunc(fn), init)
 }
 
 // String returns a string serialization of the set.
