@@ -308,6 +308,12 @@ func (s *TSet) Add(elem interface{}) *TSet {
 	return s
 }
 
+// Conj adds an element to the set. Conj implements
+// a generic mechanism for building collections.
+func (s *TSet) Conj(elem interface{}) interface{} {
+	return s.Add(elem)
+}
+
 // At returns the elem if it exists in the set otherwise it returns nil.
 func (s *TSet) At(elem interface{}) interface{} {
 	if s.backingMap.Contains(elem) {

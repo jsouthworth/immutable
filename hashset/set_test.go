@@ -166,6 +166,14 @@ func TestTSet(t *testing.T) {
 			},
 			gen.Int(),
 		))
+	properties.Property("s=Empty().Conj(i)->s.Contains(i)",
+		prop.ForAll(
+			func(i int) bool {
+				s := Empty().AsTransient().Conj(i)
+				return s.(*TSet).Contains(i)
+			},
+			gen.Int(),
+		))
 	properties.Property("s=Empty().Add(i); r=s.Add(i)->r == s",
 		prop.ForAll(
 			func(i int) bool {
