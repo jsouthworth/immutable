@@ -182,6 +182,17 @@ func genRangeFunc(do interface{}) func(value interface{}) bool {
 	}
 }
 
+// Reduce is a fast mechanism for reducing a Queue. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, value interface{}) interface{}
+// func(init iT, v vT) oT
+//
+// Reduce will panic if given any other function type.
+func (q *Queue) Reduce(fn interface{}, init interface{}) interface{} {
+	return q.bv.Reduce(fn, init)
+}
+
 // Seq returns the queue as a sequence.
 func (q *Queue) Seq() seq.Sequence {
 	if q.bv.Length() == 0 {
