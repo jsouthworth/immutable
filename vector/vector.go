@@ -16,6 +16,7 @@ var errOutOfBounds = errors.New("out of bounds")
 var errEmptyVector = errors.New("empty vector")
 var errTafterP = errors.New("transient used after persistent call")
 var errRangeSig = errors.New("Range requires a function: func(v vT) bool or func(v vT)")
+var errReduceSig = errors.New("Reduce requires a function: func(init iT, v vT) oT")
 
 const (
 	bits  = 5
@@ -399,6 +400,46 @@ func genRangeFunc(do interface{}) func(int, interface{}) bool {
 	}
 }
 
+// Reduce is a fast mechanism for reducing a Vector. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, value interface{}) interface{}
+// func(init iT, v vT) oT
+//
+// Reduce will panic if given any other function type.
+func (v *Vector) Reduce(fn interface{}, init interface{}) interface{} {
+	res := init
+	rFn := genReduceFunc(fn)
+	v.Range(func(_ int, e interface{}) {
+		res = rFn(res, e)
+	})
+	return res
+}
+
+func genReduceFunc(fn interface{}) func(r, v interface{}) interface{} {
+	switch f := fn.(type) {
+	case func(res, val interface{}) interface{}:
+		return func(r, v interface{}) interface{} {
+			return f(r, v)
+		}
+	default:
+		rv := reflect.ValueOf(fn)
+		if rv.Kind() != reflect.Func {
+			panic(errReduceSig)
+		}
+		rt := rv.Type()
+		if rt.NumIn() != 2 {
+			panic(errReduceSig)
+		}
+		if rt.NumOut() != 1 {
+			panic(errReduceSig)
+		}
+		return func(r, v interface{}) interface{} {
+			return dyn.Apply(f, r, v)
+		}
+	}
+}
+
 // Apply takes an arbitrary number of arguments and returns the
 // value At the first argument.  Apply allows vector to be called
 // as a function by the 'dyn' library.
@@ -683,6 +724,22 @@ func (v *TVector) Range(do interface{}) {
 		value := v.At(i)
 		cont = fn(i, value)
 	}
+}
+
+// Reduce is a fast mechanism for reducing a Vector. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, value interface{}) interface{}
+// func(init iT, v vT) oT
+//
+// Reduce will panic if given any other function type.
+func (v *TVector) Reduce(fn interface{}, init interface{}) interface{} {
+	res := init
+	rFn := genReduceFunc(fn)
+	v.Range(func(_ int, e interface{}) {
+		res = rFn(res, e)
+	})
+	return res
 }
 
 // Apply takes an arbitrary number of arguments and returns the
@@ -1089,6 +1146,22 @@ func (s *Slice) Range(do interface{}) {
 		value := s.At(i)
 		cont = fn(i, value)
 	}
+}
+
+// Reduce is a fast mechanism for reducing a Vector. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, value interface{}) interface{}
+// func(init iT, v vT) oT
+//
+// Reduce will panic if given any other function type.
+func (s *Slice) Reduce(fn interface{}, init interface{}) interface{} {
+	res := init
+	rFn := genReduceFunc(fn)
+	s.Range(func(_ int, e interface{}) {
+		res = rFn(res, e)
+	})
+	return res
 }
 
 // Apply takes an arbitrary number of arguments and returns the
