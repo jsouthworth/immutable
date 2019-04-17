@@ -1189,3 +1189,70 @@ func TestConj(t *testing.T) {
 		}
 	})
 }
+
+func TestReduce(t *testing.T) {
+	t.Run("func(init, value interface{}) interface{}", func(t *testing.T) {
+		m := New(1, 2, 3, 4, 5)
+		out := m.Reduce(func(res, val interface{}) interface{} {
+			return res.(int) + val.(int)
+		}, 0)
+		if out != 1+2+3+4+5 {
+			t.Fatal("didn't get expected value", out)
+		}
+	})
+	t.Run("func(init, value int) int", func(t *testing.T) {
+		m := New(1, 2, 3, 4, 5)
+		out := m.Reduce(func(res, val int) int {
+			return res + val
+		}, 0)
+		if out != 1+2+3+4+5 {
+			t.Fatal("didn't get expected value", out)
+		}
+	})
+	t.Run("func(init int) int panics", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			_ = r.(error)
+		}()
+		m := New(1, 2, 3, 4, 5)
+		_ = m.Reduce(func(res int) int {
+			return res
+		}, 0)
+	})
+	t.Run("func(init int) int panics", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			_ = r.(error)
+		}()
+		m := New(1, 2, 3, 4, 5)
+		_ = m.Reduce(func(res, val int) (int, int) {
+			return res + val, res
+		}, 0)
+	})
+	t.Run("int panics", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			_ = r.(error)
+		}()
+		m := New(1, 2, 3, 4, 5)
+		_ = m.Reduce(0, 0)
+	})
+	t.Run("Transient func(init, value int) int", func(t *testing.T) {
+		m := New(1, 2, 3, 4, 5).AsTransient()
+		out := m.Reduce(func(res, val int) int {
+			return res + val
+		}, 0)
+		if out != 1+2+3+4+5 {
+			t.Fatal("didn't get expected value", out)
+		}
+	})
+	t.Run("Slice func(init, value int) int", func(t *testing.T) {
+		m := New(1, 2, 3, 4, 5).Slice(0, 5)
+		out := m.Reduce(func(res, val int) int {
+			return res + val
+		}, 0)
+		if out != 1+2+3+4+5 {
+			t.Fatal("didn't get expected value", out)
+		}
+	})
+}
