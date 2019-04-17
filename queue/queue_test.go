@@ -364,3 +364,13 @@ func ExampleQueue_Range_typeContinue() {
 	// Output: 1
 	// 2
 }
+
+func TestQueueReduce(t *testing.T) {
+	m := New(1, 2, 3, 4, 5)
+	out := m.Reduce(func(res, val int) int {
+		return res + val
+	}, 0)
+	if out != 1+2+3+4+5 {
+		t.Fatal("didn't get expected value", out)
+	}
+}
