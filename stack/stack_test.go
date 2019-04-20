@@ -455,3 +455,29 @@ func TestEqual(t *testing.T) {
 		t.Fatal("Stack should not have been equal to an int")
 	}
 }
+
+func TestStackLength(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		if Empty().Length() != 0 {
+			t.Fatal("empty should have zero length")
+		}
+	})
+	t.Run("small", func(t *testing.T) {
+		if New(1, 2, 3, 4, 5).Length() != 5 {
+			t.Fatal("length should be 5")
+		}
+	})
+	t.Run("transient", func(t *testing.T) {
+		if New(1, 2, 3, 4, 5).AsTransient().Length() != 5 {
+			t.Fatal("length should be 5")
+		}
+	})
+}
+
+func ExampleStack_reverse() {
+	s := New(1, 2, 3, 4, 5)
+	fmt.Println(s)
+	fmt.Println(s.Reverse())
+	// Output: [ 5 4 3 2 1 ]
+	// [1 2 3 4 5]
+}
