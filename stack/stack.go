@@ -13,6 +13,7 @@ import (
 )
 
 var errRangeSig = errors.New("Range requires a function: func(v vT) bool or func(v vT)")
+var errReduceSig = errors.New("Reduce requires a function: func(init iT, v vT) oT")
 
 // Stack is a persistent stack.
 type Stack struct {
@@ -197,6 +198,47 @@ func genRangeFunc(do interface{}) func(value interface{}) bool {
 	}
 }
 
+// Reduce is a fast mechanism for reducing a Stack. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, value interface{}) interface{}
+// func(init iT, v vT) oT
+//
+// Reduce will panic if given any other function type.
+func (s *Stack) Reduce(fn interface{}, init interface{}) interface{} {
+	res := init
+	rFn := genReduceFunc(fn)
+	for i := s.backingVector.Length() - 1; i >= 0; i-- {
+		res = rFn(res, s.backingVector.At(i))
+	}
+	return res
+
+}
+
+func genReduceFunc(fn interface{}) func(r, v interface{}) interface{} {
+	switch f := fn.(type) {
+	case func(res, val interface{}) interface{}:
+		return func(r, v interface{}) interface{} {
+			return f(r, v)
+		}
+	default:
+		rv := reflect.ValueOf(fn)
+		if rv.Kind() != reflect.Func {
+			panic(errReduceSig)
+		}
+		rt := rv.Type()
+		if rt.NumIn() != 2 {
+			panic(errReduceSig)
+		}
+		if rt.NumOut() != 1 {
+			panic(errReduceSig)
+		}
+		return func(r, v interface{}) interface{} {
+			return dyn.Apply(f, r, v)
+		}
+	}
+}
+
 // Seq returns a representation of the stack as a sequence
 // corresponding to the elements of the stack.
 func (s *Stack) Seq() seq.Sequence {
@@ -337,6 +379,22 @@ func (s *TStack) Range(do interface{}) {
 		value := s.backingVector.At(i)
 		cont = fn(value)
 	}
+}
+
+// Reduce is a fast mechanism for reducing a Stack. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, value interface{}) interface{}
+// func(init iT, v vT) oT
+//
+// Reduce will panic if given any other function type.
+func (s *TStack) Reduce(fn interface{}, init interface{}) interface{} {
+	res := init
+	rFn := genReduceFunc(fn)
+	for i := s.backingVector.Length() - 1; i >= 0; i-- {
+		res = rFn(res, s.backingVector.At(i))
+	}
+	return res
 }
 
 // Length returns the number of elements in the stack.
