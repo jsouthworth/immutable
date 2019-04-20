@@ -119,6 +119,16 @@ func (s *Stack) Find(value interface{}) (interface{}, bool) {
 	return out, found
 }
 
+// Length returns the number of elements in the stack.
+func (s *Stack) Length() int {
+	return s.backingVector.Length()
+}
+
+// Reverse returns the elements of the stack in FIFO order as a vector.
+func (s *Stack) Reverse() *vector.Vector {
+	return s.backingVector
+}
+
 // AsTransient will return a mutable copy on write version of the stack.
 func (s *Stack) AsTransient() *TStack {
 	return &TStack{
@@ -327,6 +337,11 @@ func (s *TStack) Range(do interface{}) {
 		value := s.backingVector.At(i)
 		cont = fn(value)
 	}
+}
+
+// Length returns the number of elements in the stack.
+func (s *TStack) Length() int {
+	return s.backingVector.Length()
 }
 
 // String returns a representation of the stack as a string.
