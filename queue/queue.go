@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"jsouthworth.net/go/dyn"
+	"jsouthworth.net/go/immutable/stack"
 	"jsouthworth.net/go/immutable/vector"
 	"jsouthworth.net/go/seq"
 )
@@ -16,11 +17,13 @@ var errRangeSig = errors.New("Range requires a function: func(v vT) bool or func
 
 // Queue represents a persistent immutable queue structure.
 type Queue struct {
-	bv *vector.Slice
+	bv    *vector.Slice
+	stack *stack.Stack
 }
 
 var empty = Queue{
-	bv: vector.Empty().Slice(0, 0),
+	bv:    vector.Empty().Slice(0, 0),
+	stack: stack.Empty(),
 }
 
 // Empty returns an empty queue.
@@ -93,8 +96,15 @@ func queueFromSequence(coll seq.Sequence) *Queue {
 
 // Push returns a Queue with the element added to the end.
 func (q *Queue) Push(elem interface{}) *Queue {
+	if q.Length() == 0 {
+		return &Queue{
+			bv:    q.bv.Append(elem),
+			stack: q.stack,
+		}
+	}
 	return &Queue{
-		bv: q.bv.Append(elem),
+		bv:    q.bv,
+		stack: q.stack.Push(elem),
 	}
 }
 
@@ -107,11 +117,18 @@ func (q *Queue) Conj(elem interface{}) interface{} {
 // Pop returns a queue with the first element removed.
 func (q *Queue) Pop() *Queue {
 	new := q.bv.Slice(1, q.bv.Length())
-	if new.Length() == 0 {
+	if new.Length() != 0 {
+		return &Queue{
+			bv:    new,
+			stack: q.stack,
+		}
+	}
+	if q.stack.Length() == 0 {
 		return Empty()
 	}
 	return &Queue{
-		bv: new,
+		bv:    q.stack.Reverse().Slice(0, q.stack.Length()),
+		stack: stack.Empty(),
 	}
 }
 
@@ -190,7 +207,7 @@ func genRangeFunc(do interface{}) func(value interface{}) bool {
 //
 // Reduce will panic if given any other function type.
 func (q *Queue) Reduce(fn interface{}, init interface{}) interface{} {
-	return q.bv.Reduce(fn, init)
+	return q.stack.Reverse().Reduce(fn, q.bv.Reduce(fn, init))
 }
 
 // Seq returns the queue as a sequence.
@@ -216,7 +233,7 @@ func (q *Queue) String() string {
 
 // Length returns the number of elements currently in the queue.
 func (q *Queue) Length() int {
-	return q.bv.Length()
+	return q.bv.Length() + q.stack.Length()
 }
 
 // Equal returns whether the other value passed in is a queue and the
