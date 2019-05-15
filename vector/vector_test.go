@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"jsouthworth.net/go/dyn"
+	"jsouthworth.net/go/try"
 )
 
 func BenchmarkSliceAppend(b *testing.B) {
@@ -1254,5 +1255,38 @@ func TestReduce(t *testing.T) {
 		if out != 1+2+3+4+5 {
 			t.Fatal("didn't get expected value", out)
 		}
+	})
+}
+
+func assert(t *testing.T, cond bool, msg string) {
+	if !cond {
+		t.Fatal(msg)
+	}
+}
+
+func assertEq(t *testing.T, got, expected interface{}) {
+	assert(t, dyn.Equal(got, expected),
+		fmt.Sprintf("got %v; expected %v", got, expected))
+}
+
+func TestVectorShift(t *testing.T) {
+	t.Run("Empty().Append(1).Shift() == Empty()", func(t *testing.T) {
+		assert(t, Empty().Append(1).Shift() == Empty(),
+			"Empty().Append(1).Shift() should be empty")
+	})
+	t.Run("Empty().Shift() panics", func(t *testing.T) {
+		_, err := try.Apply((*Vector).Shift, Empty())
+		assertEq(t, err, errEmptyVector)
+	})
+	t.Run("Small.Shift() == Small.Length()-1", func(t *testing.T) {
+		vec := New(1, 2, 3, 4, 5)
+		assertEq(t, vec.Length()-1, vec.Shift().Length())
+	})
+	t.Run("Small.Shift() == Small[1:]", func(t *testing.T) {
+		vec := New(1, 2, 3, 4, 5)
+		vecprime := vec.Shift()
+		vecprime.Range(func(i int, v interface{}) {
+			assertEq(t, vec.At(i+1), v)
+		})
 	})
 }

@@ -280,6 +280,30 @@ func (v *Vector) Pop() *Vector {
 	}
 }
 
+// Shift removes the first element of the vector,
+// returning an immutable copy of the vector with
+// one less element, sharing structure with
+// the original vector
+func (v *Vector) Shift() *Vector {
+	switch {
+	case v.count == 0:
+		panic(errEmptyVector)
+	case v.count == 1:
+		return Empty()
+	case v.tailOffset() == 0:
+		newtail := arrayNewFromSlice(v.tail[1:])
+		return &Vector{
+			count: v.count - 1,
+			shift: v.shift,
+			root:  v.root,
+			tail:  newtail,
+		}
+	default:
+		// TODO: implement the hard bit
+	}
+	return v
+}
+
 // Length returns the number of elements in the vector.
 func (v *Vector) Length() int {
 	if v == nil {
