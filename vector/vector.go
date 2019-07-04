@@ -300,6 +300,11 @@ func (v *Vector) AsTransient() *TVector {
 	}
 }
 
+// MakeTransient is a generic version of AsTransient.
+func (v *Vector) MakeTransient() interface{} {
+	return v.AsTransient()
+}
+
 // AsNative will traverse the vector and return a
 // go native representation of the values contained within.
 func (v *Vector) AsNative() []interface{} {
@@ -690,6 +695,11 @@ func (v *TVector) AsPersistent() *Vector {
 		root:  v.root,
 		tail:  trimmedTail,
 	}
+}
+
+// MakePersistent is a generic version of AsPersistent.
+func (v *TVector) MakePersistent() interface{} {
+	return v.AsPersistent()
 }
 
 // String coverts the vector to a string representation.
