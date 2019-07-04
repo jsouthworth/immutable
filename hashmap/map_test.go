@@ -1676,6 +1676,17 @@ func TestReduce(t *testing.T) {
 				t.Fatal("didn't get expected value", out)
 			}
 		})
+	t.Run("func(init interface{}, entry interface{}) interface{}",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res interface{}, in interface{}) interface{} {
+				entry := in.(Entry)
+				return res.(int) + entry.Value().(int)
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
 	t.Run("func(init, k, v interface{}) interface{}",
 		func(t *testing.T) {
 			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)

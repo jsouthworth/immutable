@@ -363,6 +363,10 @@ func genReduceFunc(fn interface{}) func(interface{}, Entry) interface{} {
 	switch v := fn.(type) {
 	case func(interface{}, Entry) interface{}:
 		return v
+	case func(interface{}, interface{}) interface{}:
+		return func(init interface{}, entry Entry) interface{} {
+			return v(init, entry)
+		}
 	case func(interface{}, interface{}, interface{}) interface{}:
 		return func(init interface{}, entry Entry) interface{} {
 			return v(init, entry.Key(), entry.Value())
