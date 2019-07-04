@@ -206,6 +206,11 @@ func (m *Map) AsTransient() *TMap {
 	}
 }
 
+// MakeTransient is a generic version of AsTransient.
+func (m *Map) MakeTransient() interface{} {
+	return m.AsTransient()
+}
+
 // Contains will test if the key exists in the map.
 func (m *Map) Contains(key interface{}) bool {
 	_, ok := m.root.find(0, hash.Any(key, m.hashSeed), key)
@@ -488,6 +493,11 @@ func (m *TMap) AsPersistent() *Map {
 		count:    m.count,
 		root:     m.root,
 	}
+}
+
+// MakePersistent is a generic version of AsPersistent.
+func (m *TMap) MakePersistent() interface{} {
+	return m.AsPersistent()
 }
 
 // Contains will test if the key exists in the map.
