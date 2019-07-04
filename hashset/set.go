@@ -286,6 +286,11 @@ func (s *Set) AsTransient() *TSet {
 	}
 }
 
+// MakeTransient is a generic version of AsTransient.
+func (s *Set) MakeTransient() interface{} {
+	return s.AsTransient()
+}
+
 // String returns a string serialization of the set.
 func (s *Set) String() string {
 	var b strings.Builder
@@ -428,6 +433,11 @@ func (s *TSet) AsPersistent() *Set {
 	return &Set{
 		backingMap: s.backingMap.AsPersistent(),
 	}
+}
+
+// MakePersistent is a generic version of AsTransient.
+func (s *TSet) MakePersistent() interface{} {
+	return s.AsPersistent()
 }
 
 // Apply takes an arbitrary number of arguments and returns the
