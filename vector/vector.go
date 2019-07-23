@@ -32,7 +32,7 @@ type Vector struct {
 	count int
 	shift uint
 	root  *vnode
-	tail  *array
+	tail  slice
 }
 
 var emptyNode = vnodeNew(atomicZero())
@@ -41,7 +41,7 @@ var empty = Vector{
 	count: 0,
 	shift: bits,
 	root:  emptyNode,
-	tail:  new(array),
+	tail:  make(slice, 0),
 }
 
 // Empty returns the empty vector
@@ -117,7 +117,7 @@ func vectorFromReflection(value interface{}) *Vector {
 // At returns the element at the supplied index. It will panic if out of bounds.
 func (v *Vector) At(i int) interface{} {
 	arr := v.arrayFor(i)
-	return arr[i&mask]
+	return arr.at(i & mask)
 }
 
 // Find returns the value at the supplied index and if that index was
@@ -167,27 +167,26 @@ func (v *Vector) Append(value interface{}) *Vector {
 			count: v.count + 1,
 			shift: v.shift,
 			root:  v.root,
-			tail: v.tail.copy().
-				assoc(v.count-v.tailOffset(), value),
+			tail:  v.tail.appendExact(value),
 		}
 	case v.overflowsRoot():
 		root := vnodeNew(v.root.edit)
 		root.array[0] = v.root
 		root.array[1] = newPath(v.root.edit, v.shift,
-			vnodeNewFromArray(v.root.edit, v.tail))
+			vnodeNewFromSlice(v.root.edit, v.tail))
 		return &Vector{
 			count: v.count + 1,
 			shift: v.shift + bits,
 			root:  root,
-			tail:  new(array).assoc(0, value),
+			tail:  make(slice, 1).assoc(0, value),
 		}
 	default:
 		return &Vector{
 			count: v.count + 1,
 			shift: v.shift,
 			root: v.pushTail(v.shift, v.root,
-				vnodeNewFromArray(v.root.edit, v.tail)),
-			tail: new(array).assoc(0, value),
+				vnodeNewFromSlice(v.root.edit, v.tail)),
+			tail: make(slice, 1).assoc(0, value),
 		}
 	}
 }
@@ -245,7 +244,7 @@ func (v *Vector) Pop() *Vector {
 	case v.count == 1:
 		return Empty()
 	case v.count-v.tailOffset() > 1:
-		newtail := arrayNewFromSlice(
+		newtail := sliceNewFromSlice(
 			v.tail[:(v.count-v.tailOffset())-1])
 		return &Vector{
 			count: v.count - 1,
@@ -254,7 +253,7 @@ func (v *Vector) Pop() *Vector {
 			tail:  newtail,
 		}
 	default:
-		newTail := v.arrayFor(v.count - 2)
+		newTail := v.arrayFor(v.count - 2).toSlice()
 		newRoot := v.popTail(v.shift, v.root)
 		if newRoot == nil {
 			newRoot = emptyNode
@@ -292,11 +291,13 @@ func (v *Vector) Length() int {
 // vector that may be used to perform mutations in
 // a controlled way.
 func (v *Vector) AsTransient() *TVector {
+	tail := new(array)
+	copy(tail[:], v.tail)
 	return &TVector{
 		count: v.count,
 		shift: v.shift,
 		root:  v.root.editable(),
-		tail:  v.tail.copy(),
+		tail:  tail,
 	}
 }
 
@@ -472,7 +473,7 @@ func (v *Vector) tailOffset() int {
 	return ((v.count - 1) >> bits) << bits
 }
 
-func (v *Vector) arrayFor(i int) *array {
+func (v *Vector) arrayFor(i int) arrayI {
 	switch {
 	case i < 0 || i >= v.count:
 		panic(errOutOfBounds)
@@ -580,7 +581,7 @@ type TVector struct {
 func (v *TVector) At(i int) interface{} {
 	v.ensureEditable()
 	node := v.arrayFor(i)
-	return node[i&mask]
+	return node.at(i & mask)
 }
 
 // Find returns the value at the supplied index and if that index was
@@ -688,11 +689,18 @@ func (v *TVector) Length() int {
 func (v *TVector) AsPersistent() *Vector {
 	v.ensureEditable()
 	atomic.StoreInt32(v.root.edit, 0)
-	trimmedTail := arrayNewFromSlice(v.tail[:v.count-v.tailOffset()])
+	if v.count == 0 {
+		return Empty()
+	}
+	root := v.root
+	if v.tailOffset() == 0 {
+		root = emptyNode
+	}
+	trimmedTail := sliceNewFromSlice(v.tail[:v.count-v.tailOffset()])
 	return &Vector{
 		count: v.count,
 		shift: v.shift,
-		root:  v.root,
+		root:  root,
 		tail:  trimmedTail,
 	}
 }
@@ -939,6 +947,14 @@ func vnodeNewFromArray(edit *int32, a *array) *vnode {
 	return n
 }
 
+func vnodeNewFromSlice(edit *int32, s slice) *vnode {
+	return vnodeNewFromArray(edit, arrayNewFromSlice(s))
+}
+
+type arrayI interface {
+	at(idx int) interface{}
+	toSlice() slice
+}
 type array [width]interface{}
 
 func (a *array) copy() *array {
@@ -950,6 +966,50 @@ func (a *array) copy() *array {
 func (a *array) assoc(i int, v interface{}) *array {
 	a[i] = v
 	return a
+}
+
+func (a *array) toSlice() slice {
+	return a[:]
+}
+
+func (a *array) at(idx int) interface{} {
+	return a[idx]
+}
+
+type slice []interface{}
+
+func sliceNewFromSlice(in slice) slice {
+	return in.copy()
+}
+
+func (a slice) copy() slice {
+	tmp := make(slice, len(a))
+	copy(tmp, a)
+	return tmp
+}
+
+func (a slice) assoc(i int, v interface{}) slice {
+	a[i] = v
+	return a
+}
+
+func (a slice) append(vs ...interface{}) slice {
+	return append(a, vs...)
+}
+
+func (a slice) appendExact(vs ...interface{}) slice {
+	tmp := make(slice, len(a)+len(vs))
+	copy(tmp, a)
+	copy(tmp[len(a):], vs)
+	return tmp
+}
+
+func (a slice) toSlice() slice {
+	return a
+}
+
+func (a slice) at(idx int) interface{} {
+	return a[idx]
 }
 
 func arrayNewFromSlice(in []interface{}) *array {
