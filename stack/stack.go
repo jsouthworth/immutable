@@ -158,43 +158,48 @@ func (s *Stack) AsTransient() *TStack {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (s *Stack) Range(do interface{}) {
-	cont := true
-	fn := genRangeFunc(do)
-	for stack := s; stack != Empty() && cont; stack = stack.Pop() {
-		value := stack.Top()
-		cont = fn(value)
-	}
-}
-
-func genRangeFunc(do interface{}) func(value interface{}) bool {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var f func(value interface{}) bool
 	switch fn := do.(type) {
 	case func(value interface{}) bool:
-		return fn
+		f = fn
 	case func(value interface{}):
-		return func(value interface{}) bool {
+		f = func(value interface{}) bool {
 			fn(value)
 			return true
 		}
 	default:
-		rv := reflect.ValueOf(do)
-		if rv.Kind() != reflect.Func {
-			panic(errRangeSig)
+		f = genRangeFunc(do)
+	}
+	cont := true
+	for stack := s; stack != Empty() && cont; stack = stack.Pop() {
+		value := stack.Top()
+		cont = f(value)
+	}
+}
+
+func genRangeFunc(do interface{}) func(value interface{}) bool {
+	rv := reflect.ValueOf(do)
+	if rv.Kind() != reflect.Func {
+		panic(errRangeSig)
+	}
+	rt := rv.Type()
+	if rt.NumIn() != 1 || rt.NumOut() > 1 {
+		panic(errRangeSig)
+	}
+	if rt.NumOut() == 1 &&
+		rt.Out(0).Kind() != reflect.Bool {
+		panic(errRangeSig)
+	}
+	return func(value interface{}) bool {
+		out := dyn.Apply(do, value)
+		if out != nil {
+			return out.(bool)
 		}
-		rt := rv.Type()
-		if rt.NumIn() != 1 || rt.NumOut() > 1 {
-			panic(errRangeSig)
-		}
-		if rt.NumOut() == 1 &&
-			rt.Out(0).Kind() != reflect.Bool {
-			panic(errRangeSig)
-		}
-		return func(value interface{}) bool {
-			out := dyn.Apply(do, value)
-			if out != nil {
-				return out.(bool)
-			}
-			return true
-		}
+		return true
 	}
 }
 
@@ -206,8 +211,20 @@ func genRangeFunc(do interface{}) func(value interface{}) bool {
 //
 // Reduce will panic if given any other function type.
 func (s *Stack) Reduce(fn interface{}, init interface{}) interface{} {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var rFn func(r, v interface{}) interface{}
+	switch f := fn.(type) {
+	case func(res, val interface{}) interface{}:
+		rFn = func(r, v interface{}) interface{} {
+			return f(r, v)
+		}
+	default:
+		rFn = genReduceFunc(fn)
+	}
 	res := init
-	rFn := genReduceFunc(fn)
 	for i := s.backingVector.Length() - 1; i >= 0; i-- {
 		res = rFn(res, s.backingVector.At(i))
 	}
@@ -216,26 +233,19 @@ func (s *Stack) Reduce(fn interface{}, init interface{}) interface{} {
 }
 
 func genReduceFunc(fn interface{}) func(r, v interface{}) interface{} {
-	switch f := fn.(type) {
-	case func(res, val interface{}) interface{}:
-		return func(r, v interface{}) interface{} {
-			return f(r, v)
-		}
-	default:
-		rv := reflect.ValueOf(fn)
-		if rv.Kind() != reflect.Func {
-			panic(errReduceSig)
-		}
-		rt := rv.Type()
-		if rt.NumIn() != 2 {
-			panic(errReduceSig)
-		}
-		if rt.NumOut() != 1 {
-			panic(errReduceSig)
-		}
-		return func(r, v interface{}) interface{} {
-			return dyn.Apply(f, r, v)
-		}
+	rv := reflect.ValueOf(fn)
+	if rv.Kind() != reflect.Func {
+		panic(errReduceSig)
+	}
+	rt := rv.Type()
+	if rt.NumIn() != 2 {
+		panic(errReduceSig)
+	}
+	if rt.NumOut() != 1 {
+		panic(errReduceSig)
+	}
+	return func(r, v interface{}) interface{} {
+		return dyn.Apply(fn, r, v)
 	}
 }
 
@@ -373,11 +383,26 @@ func (s *TStack) AsPersistent() *Stack {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (s *TStack) Range(do interface{}) {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var f func(value interface{}) bool
+	switch fn := do.(type) {
+	case func(value interface{}) bool:
+		f = fn
+	case func(value interface{}):
+		f = func(value interface{}) bool {
+			fn(value)
+			return true
+		}
+	default:
+		f = genRangeFunc(do)
+	}
 	cont := true
-	fn := genRangeFunc(do)
 	for i := s.backingVector.Length() - 1; i >= 0 && cont; i-- {
 		value := s.backingVector.At(i)
-		cont = fn(value)
+		cont = f(value)
 	}
 }
 
@@ -389,8 +414,20 @@ func (s *TStack) Range(do interface{}) {
 //
 // Reduce will panic if given any other function type.
 func (s *TStack) Reduce(fn interface{}, init interface{}) interface{} {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var rFn func(r, v interface{}) interface{}
+	switch f := fn.(type) {
+	case func(res, val interface{}) interface{}:
+		rFn = func(r, v interface{}) interface{} {
+			return f(r, v)
+		}
+	default:
+		rFn = genReduceFunc(fn)
+	}
 	res := init
-	rFn := genReduceFunc(fn)
 	for i := s.backingVector.Length() - 1; i >= 0; i-- {
 		res = rFn(res, s.backingVector.At(i))
 	}
