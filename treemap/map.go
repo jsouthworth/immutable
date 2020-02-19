@@ -261,53 +261,58 @@ func (m *Map) Range(do interface{}) {
 	if s == nil {
 		return
 	}
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var f func(e Entry) bool
+	switch fn := do.(type) {
+	case func(key, value interface{}) bool:
+		f = func(entry Entry) bool {
+			return fn(entry.Key(), entry.Value())
+		}
+	case func(key, value interface{}):
+		f = func(entry Entry) bool {
+			fn(entry.Key(), entry.Value())
+			return true
+		}
+	case func(e Entry) bool:
+		f = fn
+	case func(e Entry):
+		f = func(entry Entry) bool {
+			fn(entry)
+			return true
+		}
+	default:
+		f = genRangeFunc(do)
+	}
 	var cont = true
-	fn := genRangeFunc(do)
 	for s != nil && cont {
 		entry := seq.First(s).(Entry)
-		cont = fn(entry)
+		cont = f(entry)
 		s = seq.Seq(seq.Next(s))
 	}
 }
 
 func genRangeFunc(do interface{}) func(Entry) bool {
-	switch fn := do.(type) {
-	case func(key, value interface{}) bool:
-		return func(entry Entry) bool {
-			return fn(entry.Key(), entry.Value())
+	rv := reflect.ValueOf(do)
+	if rv.Kind() != reflect.Func {
+		panic(errRangeSig)
+	}
+	rt := rv.Type()
+	if rt.NumIn() != 2 || rt.NumOut() > 1 {
+		panic(errRangeSig)
+	}
+	if rt.NumOut() == 1 &&
+		rt.Out(0).Kind() != reflect.Bool {
+		panic(errRangeSig)
+	}
+	return func(entry Entry) bool {
+		out := dyn.Apply(do, entry.Key(), entry.Value())
+		if out != nil {
+			return out.(bool)
 		}
-	case func(key, value interface{}):
-		return func(entry Entry) bool {
-			fn(entry.Key(), entry.Value())
-			return true
-		}
-	case func(e Entry) bool:
-		return fn
-	case func(e Entry):
-		return func(entry Entry) bool {
-			fn(entry)
-			return true
-		}
-	default:
-		rv := reflect.ValueOf(do)
-		if rv.Kind() != reflect.Func {
-			panic(errRangeSig)
-		}
-		rt := rv.Type()
-		if rt.NumIn() != 2 || rt.NumOut() > 1 {
-			panic(errRangeSig)
-		}
-		if rt.NumOut() == 1 &&
-			rt.Out(0).Kind() != reflect.Bool {
-			panic(errRangeSig)
-		}
-		return func(entry Entry) bool {
-			out := dyn.Apply(do, entry.Key(), entry.Value())
-			if out != nil {
-				return out.(bool)
-			}
-			return true
-		}
+		return true
 	}
 }
 
