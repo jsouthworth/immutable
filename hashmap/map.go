@@ -296,49 +296,53 @@ func (m *Map) Length() int {
 //    Is called with reflection and will panic if the kT and vT types are incorrect.
 // Range will panic if passed anything not matching these signatures.
 func (m *Map) Range(do interface{}) {
-	fn := genRangeFunc(do)
-	m.root.rnge(fn)
-}
-
-func genRangeFunc(do interface{}) func(Entry) bool {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var f func(Entry) bool
 	switch fn := do.(type) {
 	case func(key, value interface{}) bool:
-		return func(entry Entry) bool {
+		f = func(entry Entry) bool {
 			return fn(entry.Key(), entry.Value())
 		}
 	case func(key, value interface{}):
-		return func(entry Entry) bool {
+		f = func(entry Entry) bool {
 			fn(entry.Key(), entry.Value())
 			return true
 		}
 	case func(e Entry) bool:
-		return fn
+		f = fn
 	case func(e Entry):
-		return func(entry Entry) bool {
+		f = func(entry Entry) bool {
 			fn(entry)
 			return true
 		}
 	default:
-		rv := reflect.ValueOf(do)
-		if rv.Kind() != reflect.Func {
-			panic(errRangeSig)
-		}
-		rt := rv.Type()
-		if rt.NumIn() != 2 || rt.NumOut() > 1 {
-			panic(errRangeSig)
-		}
-		if rt.NumOut() == 1 &&
-			rt.Out(0).Kind() != reflect.Bool {
-			panic(errRangeSig)
-		}
-		return func(entry Entry) bool {
-			out := dyn.Apply(do, entry.Key(), entry.Value())
-			if out != nil {
-				return out.(bool)
-			}
-			return true
-		}
+		f = genRangeFunc(do)
+	}
+	m.root.rnge(f)
+}
 
+func genRangeFunc(do interface{}) func(Entry) bool {
+	rv := reflect.ValueOf(do)
+	if rv.Kind() != reflect.Func {
+		panic(errRangeSig)
+	}
+	rt := rv.Type()
+	if rt.NumIn() != 2 || rt.NumOut() > 1 {
+		panic(errRangeSig)
+	}
+	if rt.NumOut() == 1 &&
+		rt.Out(0).Kind() != reflect.Bool {
+		panic(errRangeSig)
+	}
+	return func(entry Entry) bool {
+		out := dyn.Apply(do, entry.Key(), entry.Value())
+		if out != nil {
+			return out.(bool)
+		}
+		return true
 	}
 }
 
@@ -351,8 +355,26 @@ func genRangeFunc(do interface{}) func(Entry) bool {
 // func(init iT, k kT, v vT) oT
 // Reduce will panic if given any other function type.
 func (m *Map) Reduce(fn interface{}, init interface{}) interface{} {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var rFn func(interface{}, Entry) interface{}
+	switch v := fn.(type) {
+	case func(interface{}, Entry) interface{}:
+		rFn = v
+	case func(interface{}, interface{}) interface{}:
+		rFn = func(init interface{}, entry Entry) interface{} {
+			return v(init, entry)
+		}
+	case func(interface{}, interface{}, interface{}) interface{}:
+		rFn = func(init interface{}, entry Entry) interface{} {
+			return v(init, entry.Key(), entry.Value())
+		}
+	default:
+		rFn = genReduceFunc(fn)
+	}
 	res := init
-	rFn := genReduceFunc(fn)
 	m.Range(func(e Entry) {
 		res = rFn(res, e)
 	})
@@ -360,38 +382,25 @@ func (m *Map) Reduce(fn interface{}, init interface{}) interface{} {
 }
 
 func genReduceFunc(fn interface{}) func(interface{}, Entry) interface{} {
-	switch v := fn.(type) {
-	case func(interface{}, Entry) interface{}:
-		return v
-	case func(interface{}, interface{}) interface{}:
-		return func(init interface{}, entry Entry) interface{} {
-			return v(init, entry)
+	rv := reflect.ValueOf(fn)
+	if rv.Kind() != reflect.Func {
+		panic(errReduceSig)
+	}
+	rt := rv.Type()
+	if rt.NumOut() != 1 {
+		panic(errReduceSig)
+	}
+	switch rt.NumIn() {
+	case 2:
+		return func(i interface{}, e Entry) interface{} {
+			return dyn.Apply(fn, i, e)
 		}
-	case func(interface{}, interface{}, interface{}) interface{}:
-		return func(init interface{}, entry Entry) interface{} {
-			return v(init, entry.Key(), entry.Value())
+	case 3:
+		return func(i interface{}, e Entry) interface{} {
+			return dyn.Apply(fn, i, e.Key(), e.Value())
 		}
 	default:
-		rv := reflect.ValueOf(fn)
-		if rv.Kind() != reflect.Func {
-			panic(errReduceSig)
-		}
-		rt := rv.Type()
-		if rt.NumOut() != 1 {
-			panic(errReduceSig)
-		}
-		switch rt.NumIn() {
-		case 2:
-			return func(i interface{}, e Entry) interface{} {
-				return dyn.Apply(fn, i, e)
-			}
-		case 3:
-			return func(i interface{}, e Entry) interface{} {
-				return dyn.Apply(fn, i, e.Key(), e.Value())
-			}
-		default:
-			panic(errReduceSig)
-		}
+		panic(errReduceSig)
 	}
 }
 
@@ -597,8 +606,33 @@ func (m *TMap) ensureEditable() {
 //    Is called with reflection and will panic if the kT and vT types are incorrect.
 // Range will panic if passed anything not matching these signatures.
 func (m *TMap) Range(do interface{}) {
-	fn := genRangeFunc(do)
-	m.root.rnge(fn)
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var f func(Entry) bool
+	switch fn := do.(type) {
+	case func(key, value interface{}) bool:
+		f = func(entry Entry) bool {
+			return fn(entry.Key(), entry.Value())
+		}
+	case func(key, value interface{}):
+		f = func(entry Entry) bool {
+			fn(entry.Key(), entry.Value())
+			return true
+		}
+	case func(e Entry) bool:
+		f = fn
+	case func(e Entry):
+		f = func(entry Entry) bool {
+			fn(entry)
+			return true
+		}
+	default:
+		f = genRangeFunc(do)
+	}
+
+	m.root.rnge(f)
 }
 
 // Reduce is a fast mechanism for reducing a Map. Reduce can take
@@ -610,8 +644,26 @@ func (m *TMap) Range(do interface{}) {
 // func(init iT, k kT, v vT) oT
 // Reduce will panic if given any other function type.
 func (m *TMap) Reduce(fn interface{}, init interface{}) interface{} {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var rFn func(interface{}, Entry) interface{}
+	switch v := fn.(type) {
+	case func(interface{}, Entry) interface{}:
+		rFn = v
+	case func(interface{}, interface{}) interface{}:
+		rFn = func(init interface{}, entry Entry) interface{} {
+			return v(init, entry)
+		}
+	case func(interface{}, interface{}, interface{}) interface{}:
+		rFn = func(init interface{}, entry Entry) interface{} {
+			return v(init, entry.Key(), entry.Value())
+		}
+	default:
+		rFn = genReduceFunc(fn)
+	}
 	res := init
-	rFn := genReduceFunc(fn)
 	m.Range(func(e Entry) {
 		res = rFn(res, e)
 	})
