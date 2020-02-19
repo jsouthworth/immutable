@@ -376,43 +376,49 @@ func (v *Vector) Slice(start, end int) *Slice {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (v *Vector) Range(do interface{}) {
-	cont := true
-	fn := genRangeFunc(do)
-	for i := 0; i < v.Length() && cont; i++ {
-		value := v.At(i)
-		cont = fn(i, value)
-	}
-}
-
-func genRangeFunc(do interface{}) func(int, interface{}) bool {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var f func(int, interface{}) bool
 	switch fn := do.(type) {
 	case func(idx int, value interface{}) bool:
-		return fn
+		f = fn
 	case func(idx int, value interface{}):
-		return func(idx int, value interface{}) bool {
+		f = func(idx int, value interface{}) bool {
 			fn(idx, value)
 			return true
 		}
 	default:
-		rv := reflect.ValueOf(do)
-		if rv.Kind() != reflect.Func {
-			panic(errRangeSig)
+		f = genRangeFunc(do)
+	}
+
+	cont := true
+	for i := 0; i < v.Length() && cont; i++ {
+		value := v.At(i)
+		cont = f(i, value)
+	}
+}
+
+func genRangeFunc(do interface{}) func(int, interface{}) bool {
+	rv := reflect.ValueOf(do)
+	if rv.Kind() != reflect.Func {
+		panic(errRangeSig)
+	}
+	rt := rv.Type()
+	if rt.NumIn() != 2 || rt.NumOut() > 1 {
+		panic(errRangeSig)
+	}
+	if rt.NumOut() == 1 &&
+		rt.Out(0).Kind() != reflect.Bool {
+		panic(errRangeSig)
+	}
+	return func(idx int, value interface{}) bool {
+		out := dyn.Apply(do, idx, value)
+		if out != nil {
+			return out.(bool)
 		}
-		rt := rv.Type()
-		if rt.NumIn() != 2 || rt.NumOut() > 1 {
-			panic(errRangeSig)
-		}
-		if rt.NumOut() == 1 &&
-			rt.Out(0).Kind() != reflect.Bool {
-			panic(errRangeSig)
-		}
-		return func(idx int, value interface{}) bool {
-			out := dyn.Apply(do, idx, value)
-			if out != nil {
-				return out.(bool)
-			}
-			return true
-		}
+		return true
 	}
 }
 
@@ -424,8 +430,19 @@ func genRangeFunc(do interface{}) func(int, interface{}) bool {
 //
 // Reduce will panic if given any other function type.
 func (v *Vector) Reduce(fn interface{}, init interface{}) interface{} {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       this code is inlined to avoid heap allocation of
+	//       the closure.
+	var rFn func(r, v interface{}) interface{}
+	switch f := fn.(type) {
+	case func(res, val interface{}) interface{}:
+		rFn = f
+	default:
+		rFn = genReduceFunc(fn)
+	}
+
 	res := init
-	rFn := genReduceFunc(fn)
 	v.Range(func(_ int, e interface{}) {
 		res = rFn(res, e)
 	})
@@ -433,26 +450,19 @@ func (v *Vector) Reduce(fn interface{}, init interface{}) interface{} {
 }
 
 func genReduceFunc(fn interface{}) func(r, v interface{}) interface{} {
-	switch f := fn.(type) {
-	case func(res, val interface{}) interface{}:
-		return func(r, v interface{}) interface{} {
-			return f(r, v)
-		}
-	default:
-		rv := reflect.ValueOf(fn)
-		if rv.Kind() != reflect.Func {
-			panic(errReduceSig)
-		}
-		rt := rv.Type()
-		if rt.NumIn() != 2 {
-			panic(errReduceSig)
-		}
-		if rt.NumOut() != 1 {
-			panic(errReduceSig)
-		}
-		return func(r, v interface{}) interface{} {
-			return dyn.Apply(f, r, v)
-		}
+	rv := reflect.ValueOf(fn)
+	if rv.Kind() != reflect.Func {
+		panic(errReduceSig)
+	}
+	rt := rv.Type()
+	if rt.NumIn() != 2 {
+		panic(errReduceSig)
+	}
+	if rt.NumOut() != 1 {
+		panic(errReduceSig)
+	}
+	return func(r, v interface{}) interface{} {
+		return dyn.Apply(fn, r, v)
 	}
 }
 
@@ -746,11 +756,27 @@ func (v *TVector) String() string {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (v *TVector) Range(do interface{}) {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var f func(int, interface{}) bool
+	switch fn := do.(type) {
+	case func(idx int, value interface{}) bool:
+		f = fn
+	case func(idx int, value interface{}):
+		f = func(idx int, value interface{}) bool {
+			fn(idx, value)
+			return true
+		}
+	default:
+		f = genRangeFunc(do)
+	}
+
 	cont := true
-	fn := genRangeFunc(do)
 	for i := 0; i < v.Length() && cont; i++ {
 		value := v.At(i)
-		cont = fn(i, value)
+		cont = f(i, value)
 	}
 }
 
@@ -762,8 +788,19 @@ func (v *TVector) Range(do interface{}) {
 //
 // Reduce will panic if given any other function type.
 func (v *TVector) Reduce(fn interface{}, init interface{}) interface{} {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var rFn func(r, v interface{}) interface{}
+	switch f := fn.(type) {
+	case func(res, val interface{}) interface{}:
+		rFn = f
+	default:
+		rFn = genReduceFunc(fn)
+	}
+
 	res := init
-	rFn := genReduceFunc(fn)
 	v.Range(func(_ int, e interface{}) {
 		res = rFn(res, e)
 	})
@@ -1220,11 +1257,27 @@ func (s *Slice) String() string {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (s *Slice) Range(do interface{}) {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var f func(int, interface{}) bool
+	switch fn := do.(type) {
+	case func(idx int, value interface{}) bool:
+		f = fn
+	case func(idx int, value interface{}):
+		f = func(idx int, value interface{}) bool {
+			fn(idx, value)
+			return true
+		}
+	default:
+		f = genRangeFunc(do)
+	}
+
 	cont := true
-	fn := genRangeFunc(do)
 	for i := 0; i < s.Length() && cont; i++ {
 		value := s.At(i)
-		cont = fn(i, value)
+		cont = f(i, value)
 	}
 }
 
@@ -1236,8 +1289,19 @@ func (s *Slice) Range(do interface{}) {
 //
 // Reduce will panic if given any other function type.
 func (s *Slice) Reduce(fn interface{}, init interface{}) interface{} {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var rFn func(r, v interface{}) interface{}
+	switch f := fn.(type) {
+	case func(res, val interface{}) interface{}:
+		rFn = f
+	default:
+		rFn = genReduceFunc(fn)
+	}
+
 	res := init
-	rFn := genReduceFunc(fn)
 	s.Range(func(_ int, e interface{}) {
 		res = rFn(res, e)
 	})
