@@ -116,8 +116,18 @@ func vectorFromReflection(value interface{}) *Vector {
 
 // At returns the element at the supplied index. It will panic if out of bounds.
 func (v *Vector) At(i int) interface{} {
-	arr := v.arrayFor(i)
-	return arr.at(i & mask)
+	switch {
+	case i < 0 || i >= v.count:
+		panic(errOutOfBounds)
+	case i >= v.tailOffset():
+		return v.tail.at(i & mask)
+	default:
+		n := v.root
+		for level := v.shift; level > 0; level -= bits {
+			n = n.array[(i>>level)&mask].(*vnode)
+		}
+		return n.array.at(i & mask)
+	}
 }
 
 // Find returns the value at the supplied index and if that index was
