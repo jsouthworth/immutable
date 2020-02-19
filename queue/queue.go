@@ -142,20 +142,12 @@ func (q *Queue) First() interface{} {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (q *Queue) Range(do interface{}) {
-	cont := true
-	fn := genRangeFunc(do)
-	for queue := q; queue != Empty() && cont; queue = queue.Pop() {
-		value := queue.First()
-		cont = fn(value)
-	}
-}
-
-func genRangeFunc(do interface{}) func(value interface{}) bool {
+	var f func(value interface{}) bool
 	switch fn := do.(type) {
 	case func(value interface{}) bool:
-		return fn
+		f = fn
 	case func(value interface{}):
-		return func(value interface{}) bool {
+		f = func(value interface{}) bool {
 			fn(value)
 			return true
 		}
@@ -172,13 +164,18 @@ func genRangeFunc(do interface{}) func(value interface{}) bool {
 			rt.Out(0).Kind() != reflect.Bool {
 			panic(errRangeSig)
 		}
-		return func(value interface{}) bool {
+		f = func(value interface{}) bool {
 			out := dyn.Apply(do, value)
 			if out != nil {
 				return out.(bool)
 			}
 			return true
 		}
+	}
+	cont := true
+	for queue := q; queue != Empty() && cont; queue = queue.Pop() {
+		value := queue.First()
+		cont = f(value)
 	}
 }
 
