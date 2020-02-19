@@ -156,42 +156,43 @@ func (l *List) Length() int {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (l *List) Range(do interface{}) {
-	cont := true
-	fn := genRangeFunc(do)
-	for list := l; list != nil && cont; list = list.Next() {
-		cont = fn(list.First())
-	}
-}
-
-func genRangeFunc(do interface{}) func(value interface{}) bool {
+	var f func(value interface{}) bool
 	switch fn := do.(type) {
 	case func(value interface{}) bool:
-		return fn
+		f = fn
 	case func(value interface{}):
-		return func(value interface{}) bool {
+		f = func(value interface{}) bool {
 			fn(value)
 			return true
 		}
 	default:
-		rv := reflect.ValueOf(do)
-		if rv.Kind() != reflect.Func {
-			panic(errRangeSig)
+		f = genRangeFunc(do)
+	}
+	cont := true
+	for list := l; list != nil && cont; list = list.Next() {
+		cont = f(list.First())
+	}
+}
+
+func genRangeFunc(do interface{}) func(value interface{}) bool {
+	rv := reflect.ValueOf(do)
+	if rv.Kind() != reflect.Func {
+		panic(errRangeSig)
+	}
+	rt := rv.Type()
+	if rt.NumIn() != 1 || rt.NumOut() > 1 {
+		panic(errRangeSig)
+	}
+	if rt.NumOut() == 1 &&
+		rt.Out(0).Kind() != reflect.Bool {
+		panic(errRangeSig)
+	}
+	return func(value interface{}) bool {
+		out := dyn.Apply(do, value)
+		if out != nil {
+			return out.(bool)
 		}
-		rt := rv.Type()
-		if rt.NumIn() != 1 || rt.NumOut() > 1 {
-			panic(errRangeSig)
-		}
-		if rt.NumOut() == 1 &&
-			rt.Out(0).Kind() != reflect.Bool {
-			panic(errRangeSig)
-		}
-		return func(value interface{}) bool {
-			out := dyn.Apply(do, value)
-			if out != nil {
-				return out.(bool)
-			}
-			return true
-		}
+		return true
 	}
 }
 
