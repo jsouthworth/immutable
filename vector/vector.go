@@ -301,13 +301,10 @@ func (v *Vector) Length() int {
 // vector that may be used to perform mutations in
 // a controlled way.
 func (v *Vector) AsTransient() *TVector {
-	tail := new(array)
-	copy(tail[:], v.tail)
 	return &TVector{
 		count: v.count,
 		shift: v.shift,
-		root:  v.root.editable(),
-		tail:  tail,
+		orig:  v,
 	}
 }
 
@@ -594,12 +591,18 @@ type TVector struct {
 	shift uint
 	root  *vnode
 	tail  *array
+
+	modified bool
+	orig     *Vector
 }
 
 // At returns the element at the supplied index.
 // It will panic if out of bounds or called after AsPersistent.
 func (v *TVector) At(i int) interface{} {
 	v.ensureEditable()
+	if !v.modified {
+		return v.orig.At(i)
+	}
 	node := v.arrayFor(i)
 	return node.at(i & mask)
 }
@@ -619,6 +622,7 @@ func (v *TVector) Find(idx interface{}) (interface{}, bool) {
 // It will panic if called after AsPersistent.
 func (v *TVector) Assoc(i int, value interface{}) *TVector {
 	v.ensureEditable()
+	v.makeModifiable()
 	switch {
 	case i < 0 || i >= v.count:
 		panic(errOutOfBounds)
@@ -635,6 +639,7 @@ func (v *TVector) Assoc(i int, value interface{}) *TVector {
 // element. It will panic if called after AsPersistent.
 func (v *TVector) Append(value interface{}) *TVector {
 	v.ensureEditable()
+	v.makeModifiable()
 	switch {
 	case v.roomInTail():
 		v.tail.assoc(v.count&mask, value)
@@ -666,6 +671,7 @@ func (v *TVector) Conj(elem interface{}) interface{} {
 // It will panic if called after AsPersistent.
 func (v *TVector) Pop() *TVector {
 	v.ensureEditable()
+	v.makeModifiable()
 	switch {
 	case v.count == 0:
 		panic(errEmptyVector)
@@ -708,6 +714,9 @@ func (v *TVector) Length() int {
 // Once this occurs any additional actions on the transient vector will panic.
 func (v *TVector) AsPersistent() *Vector {
 	v.ensureEditable()
+	if !v.modified {
+		return v.orig
+	}
 	atomic.StoreInt32(v.root.edit, 0)
 	if v.count == 0 {
 		return Empty()
@@ -818,6 +827,8 @@ func (v *TVector) Apply(args ...interface{}) interface{} {
 // Delete removes the element at the current index, shifting the others
 // down and yeilding a vector with one fewer elements.
 func (v *TVector) Delete(idx int) *TVector {
+	v.ensureEditable()
+	v.makeModifiable()
 	if idx < 0 || idx >= v.count {
 		panic(errOutOfBounds)
 	}
@@ -833,6 +844,8 @@ func (v *TVector) Delete(idx int) *TVector {
 // other values down. This yeilds a vector with an additional value at the
 // provided index.
 func (v *TVector) Insert(idx int, val interface{}) *TVector {
+	v.ensureEditable()
+	v.makeModifiable()
 	if idx < 0 || idx >= v.count {
 		panic(errOutOfBounds)
 	}
@@ -937,9 +950,23 @@ func (v *TVector) tailOffset() int {
 }
 
 func (v *TVector) ensureEditable() {
+	if !v.modified {
+		return
+	}
 	if atomic.LoadInt32(v.root.edit) == 0 {
 		panic(errTafterP)
 	}
+}
+
+func (v *TVector) makeModifiable() {
+	if v.modified {
+		return
+	}
+	tail := new(array)
+	copy(tail[:], v.orig.tail)
+	v.tail = tail
+	v.root = v.orig.root.editable()
+	v.modified = true
 }
 
 func (v *TVector) ensureEditableNode(node *vnode) *vnode {
