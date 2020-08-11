@@ -189,9 +189,11 @@ func (m *Map) Conj(value interface{}) interface{} {
 // AsNative returns the map converted to a go native map type.
 func (m *Map) AsNative() map[interface{}]interface{} {
 	out := make(map[interface{}]interface{})
-	m.Range(func(key, val interface{}) {
+	iter := m.Iterator()
+	for iter.HasNext() {
+		key, val := iter.Next()
 		out[key] = val
-	})
+	}
 	return out
 }
 
@@ -258,13 +260,14 @@ func (m *Map) Equal(o interface{}) bool {
 		return false
 	}
 	foundAll := true
-	m.Range(func(key, value interface{}) bool {
+	iter := m.Iterator()
+	for iter.HasNext() {
+		key, value := iter.Next()
 		if !equalValues(other.At(key), value) {
 			foundAll = false
-			return false
+			break
 		}
-		return true
-	})
+	}
 	return foundAll
 }
 

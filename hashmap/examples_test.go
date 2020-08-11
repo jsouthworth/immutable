@@ -205,3 +205,16 @@ func ExampleMap_Transform() {
 	})
 	fmt.Println(m)
 }
+
+func ExampleMap_Iterator() {
+	// Iterator returns a mutable iterator over the map contents
+	m := New("a", true, "b", false, "c", true, "d", false)
+	iter := m.Iterator()
+	for iter.HasNext() {
+		key, value := iter.Next()
+		if value {
+			break
+		}
+		fmt.Println("key", key, "value", value)
+	}
+}
