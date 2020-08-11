@@ -212,7 +212,7 @@ func ExampleMap_Iterator() {
 	iter := m.Iterator()
 	for iter.HasNext() {
 		key, value := iter.Next()
-		if value {
+		if value.(bool) {
 			break
 		}
 		fmt.Println("key", key, "value", value)
