@@ -140,8 +140,8 @@ func (n *bitmapIndexedNode) unpack(
 	idx uint,
 	child node,
 ) *arrayNode {
-	nodes := new(array)
-	nodes.assoc(idx, child)
+	var nodes array
+	nodes[idx] = child
 	var j uint
 	for i := uint(0); i < width; i++ {
 		if ((n.bitmap >> i) & 1) == 0 {
@@ -155,9 +155,9 @@ func (n *bitmapIndexedNode) unpack(
 					hash.Any(entry.k, n.seed),
 					entry.k,
 					entry.v)
-			nodes.assoc(i, node)
+			nodes[i] = node
 		} else {
-			nodes.assoc(i, entry.v.(node))
+			nodes[i] = entry.v.(node)
 		}
 		j++
 	}

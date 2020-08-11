@@ -7,7 +7,7 @@ import (
 type arrayNode struct {
 	seed  uintptr
 	count int
-	array *array
+	array array
 	edit  *uint32
 }
 
@@ -18,7 +18,7 @@ func (n *arrayNode) ensureEditable(edit *uint32) *arrayNode {
 	return &arrayNode{
 		seed:  n.seed,
 		count: n.count,
-		array: n.array.copy(),
+		array: n.array,
 		edit:  edit,
 	}
 
@@ -26,7 +26,7 @@ func (n *arrayNode) ensureEditable(edit *uint32) *arrayNode {
 
 func (n *arrayNode) editAndSet(edit *uint32, idx uint, v node) *arrayNode {
 	n = n.ensureEditable(edit)
-	n.array.assoc(idx, v)
+	n.array[idx] = v
 	return n
 }
 
@@ -143,30 +143,19 @@ func (n *arrayNode) rnge(fn func(Entry) bool) bool {
 
 type array [width]node
 
-func (a *array) copy() *array {
-	var tmp array
-	copy(tmp[:], a[:])
-	return &tmp
-}
-
-func (a *array) assoc(i uint, v node) *array {
-	a[i] = v
-	return a
-}
-
-func arrayNewFromSlice(in []node) *array {
+func arrayNewFromSlice(in []node) array {
 	var out array
 	copy(out[:], in)
-	return &out
+	return out
 }
 
 type arrayNodeSeq struct {
-	nodes *array
+	nodes array
 	index int
 	s     seq.Sequence
 }
 
-func arrayNodeSeqNew(nodes *array, index int, s seq.Sequence) *arrayNodeSeq {
+func arrayNodeSeqNew(nodes array, index int, s seq.Sequence) *arrayNodeSeq {
 	if s != nil {
 		return &arrayNodeSeq{
 			nodes: nodes,
