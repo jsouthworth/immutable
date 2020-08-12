@@ -11,7 +11,9 @@ const (
 // are not safe for concurrent access so they may not be shared
 // between goroutines.
 func (m *Map) Iterator() Iterator {
-	return makeIterator(m.root)
+	i := makeIterator(m.root)
+	i.HasNext() // Make sure the initial iterator value is valid
+	return i
 }
 
 // Iterator is a mutable iterator for a map. It has a fixed size
