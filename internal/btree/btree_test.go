@@ -385,7 +385,7 @@ func TestAsMap(t *testing.T) {
 					ae, aok := a.(mapEntry)
 					be, bok := b.(mapEntry)
 					return aok && bok &&
-						dyn.Equal(ae.key, be.key) &&
+						dyn.Compare(ae.key, be.key) == 0 &&
 						dyn.Equal(ae.val, be.val)
 				}),
 			)

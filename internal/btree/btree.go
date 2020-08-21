@@ -313,6 +313,13 @@ func (t *TBTree) Delete(key interface{}) *TBTree {
 	return t
 }
 
+func (t *TBTree) Iterator() Iterator {
+	t.ensureEditable()
+	i := makeIterator(t.root)
+	i.HasNext() // Make sure the initial iterator value is valid
+	return i
+}
+
 func (t *TBTree) Length() int {
 	t.ensureEditable()
 	return t.count

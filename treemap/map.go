@@ -13,6 +13,7 @@ import (
 
 var errOddElements = errors.New("must supply an even number elements")
 var errRangeSig = errors.New("Range requires a function: func(k kT, v vT) bool or func(k kT, v vT)")
+var errReduceSig = errors.New("Reduce requires a function: func(init iT, k kT, v vT) oT or func(init iT, e Entry) oT")
 
 // Entry is a map entry. Each entry consists of a key and value.
 type Entry interface {
@@ -47,6 +48,7 @@ func (e entry) String() string {
 // structure with the original map.
 type Map struct {
 	root *btree.BTree
+	eq   eqFunc
 }
 
 type cmpFunc func(k1, k2 interface{}) int
@@ -71,6 +73,7 @@ var empty = Map{
 		btree.Compare(defaultCompare),
 		btree.Equal(defaultEqual),
 	),
+	eq: dyn.Equal,
 }
 
 type mapOptions struct {
@@ -136,6 +139,7 @@ func Empty(options ...Option) *Map {
 			btree.Compare(cmp),
 			btree.Equal(eq),
 		),
+		eq: opts.equal,
 	}
 }
 
@@ -163,6 +167,8 @@ func newWithOptions(elems []interface{}, options ...Option) *Map {
 //
 // *Map:
 //    Returned directly as it is already immutable.
+// *TMap:
+//    AsPersistent is called on it and the result is returned.
 // map[interface{}]interface{}:
 //    Converted directly by looping over the map and calling Assoc starting with an empty transient map. The transient map is the converted to a persistent one and returned.
 // []Entry:
@@ -177,6 +183,8 @@ func From(value interface{}, options ...Option) *Map {
 	switch v := value.(type) {
 	case *Map:
 		return v
+	case *TMap:
+		return v.AsPersistent()
 	case map[interface{}]interface{}:
 		out := Empty(options...)
 		for key, val := range v {
@@ -269,6 +277,7 @@ func (m *Map) Assoc(key, value interface{}) *Map {
 	default:
 		return &Map{
 			root: root,
+			eq:   m.eq,
 		}
 	}
 }
@@ -287,6 +296,7 @@ func (m *Map) Delete(key interface{}) *Map {
 	}
 	return &Map{
 		root: root,
+		eq:   m.eq,
 	}
 }
 
@@ -344,10 +354,10 @@ func (m *Map) Range(do interface{}) {
 		f = genRangeFunc(do)
 	}
 
-	iter := m.root.Iterator()
+	iter := m.Iterator()
 	var cont = true
 	for iter.HasNext() && cont {
-		entry := iter.Next().(Entry)
+		entry := iter.NextEntry()
 		cont = f(entry)
 	}
 }
@@ -371,6 +381,66 @@ func genRangeFunc(do interface{}) func(Entry) bool {
 			return out.(bool)
 		}
 		return true
+	}
+}
+
+// Reduce is a fast mechanism for reducing a Map. Reduce can take
+// the following types as the fn:
+//
+// func(init interface{}, entry Entry) interface{}
+// func(init interface{}, key interface{}, value interface{}) interface{}
+// func(init iT, e Entry) oT
+// func(init iT, k kT, v vT) oT
+// Reduce will panic if given any other function type.
+func (m *Map) Reduce(fn interface{}, init interface{}) interface{} {
+	// NOTE: Update other functions using the same pattern
+	//       when modifying the below.
+	//       This code is inlined to avoid heap allocation of
+	//       the closure.
+	var rFn func(interface{}, Entry) interface{}
+	switch v := fn.(type) {
+	case func(interface{}, Entry) interface{}:
+		rFn = v
+	case func(interface{}, interface{}) interface{}:
+		rFn = func(init interface{}, entry Entry) interface{} {
+			return v(init, entry)
+		}
+	case func(interface{}, interface{}, interface{}) interface{}:
+		rFn = func(init interface{}, entry Entry) interface{} {
+			return v(init, entry.Key(), entry.Value())
+		}
+	default:
+		rFn = genReduceFunc(fn)
+	}
+	res := init
+	iter := m.Iterator()
+	for iter.HasNext() {
+		entry := iter.NextEntry()
+		res = rFn(res, entry)
+	}
+	return res
+}
+
+func genReduceFunc(fn interface{}) func(interface{}, Entry) interface{} {
+	rv := reflect.ValueOf(fn)
+	if rv.Kind() != reflect.Func {
+		panic(errReduceSig)
+	}
+	rt := rv.Type()
+	if rt.NumOut() != 1 {
+		panic(errReduceSig)
+	}
+	switch rt.NumIn() {
+	case 2:
+		return func(i interface{}, e Entry) interface{} {
+			return dyn.Apply(fn, i, e)
+		}
+	case 3:
+		return func(i interface{}, e Entry) interface{} {
+			return dyn.Apply(fn, i, e.Key(), e.Value())
+		}
+	default:
+		panic(errReduceSig)
 	}
 }
 
@@ -429,17 +499,14 @@ func (m *Map) Equal(o interface{}) bool {
 	if m.Length() != other.Length() {
 		return false
 	}
-	foundAll := true
 	iter := m.Iterator()
 	for iter.HasNext() {
 		key, value := iter.Next()
-		if !dyn.Equal(other.At(key), value) {
-			foundAll = false
+		if !m.eq(other.At(key), value) {
 			return false
 		}
-		return true
 	}
-	return foundAll
+	return true
 }
 
 // Apply takes an arbitrary number of arguments and returns the
@@ -474,4 +541,18 @@ func (i *Iterator) NextEntry() Entry {
 // HasNext is true when there are more elements to be iterated over.
 func (i *Iterator) HasNext() bool {
 	return i.impl.HasNext()
+}
+
+// AsTransient will return a transient map that shares
+// structure with the persistent map.
+func (m *Map) AsTransient() *TMap {
+	return &TMap{
+		root: m.root.AsTransient(),
+		eq:   m.eq,
+	}
+}
+
+// MakeTransient is a generic version of AsTransient.
+func (m *Map) MakeTransient() interface{} {
+	return m.AsTransient()
 }

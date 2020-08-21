@@ -859,6 +859,93 @@ func TestRange(t *testing.T) {
 	properties.TestingRun(t)
 }
 
+func TestReduce(t *testing.T) {
+	// This is a quick test of reduce since the underlying mechanisms
+	// are tested thoroughly elsewhere
+
+	t.Run("func(init interface{}, entry Entry) interface{}",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res interface{}, entry Entry) interface{} {
+				return res.(int) + entry.Value().(int)
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("func(init interface{}, entry interface{}) interface{}",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res interface{}, in interface{}) interface{} {
+				entry := in.(Entry)
+				return res.(int) + entry.Value().(int)
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("func(init, k, v interface{}) interface{}",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res, k, v interface{}) interface{} {
+				return res.(int) + v.(int)
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("func(init int, e Entry) int",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res int, e Entry) int {
+				return res + e.Value().(int)
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("func(init, k, v int) int",
+		func(t *testing.T) {
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			out := m.Reduce(func(res, k, v int) int {
+				return res + v
+			}, 0)
+			if out != 1+2+3+4+5 {
+				t.Fatal("didn't get expected value", out)
+			}
+		})
+	t.Run("int panics", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			_ = r.(error)
+		}()
+		m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+		_ = m.Reduce(0, 0)
+	})
+	t.Run("func(init, k, v int) (int, bool) panics",
+		func(t *testing.T) {
+			defer func() {
+				r := recover()
+				_ = r.(error)
+			}()
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			_ = m.Reduce(func(res, k, v int) (int, bool) {
+				return res + v, true
+			}, 0)
+		})
+	t.Run("func(init, k, v, t int) int panics",
+		func(t *testing.T) {
+			defer func() {
+				r := recover()
+				_ = r.(error)
+			}()
+			m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5)
+			_ = m.Reduce(func(res, k, v, t int) int {
+				return res + v
+			}, 0)
+		})
+}
+
 func makeMap() *Map {
 	return Empty()
 }
@@ -875,7 +962,7 @@ type lmap struct {
 }
 
 func makeLargeMap(num int, k, v string) *lmap {
-	m := Empty()
+	m := Empty().AsTransient()
 	for i := 0; i < num; i++ {
 		m = m.Assoc(k+strconv.Itoa(i), v+strconv.Itoa(i))
 	}
@@ -883,7 +970,7 @@ func makeLargeMap(num int, k, v string) *lmap {
 		num: num,
 		k:   k,
 		v:   v,
-		m:   m,
+		m:   m.AsPersistent(),
 	}
 }
 
@@ -911,13 +998,13 @@ type rmap struct {
 }
 
 func makeRandomMap(entries map[string]string) *rmap {
-	m := Empty()
+	m := Empty().AsTransient()
 	for key, val := range entries {
 		m = m.Assoc(key, val)
 	}
 	return &rmap{
 		entries: entries,
-		m:       m,
+		m:       m.AsPersistent(),
 	}
 }
 
@@ -931,6 +1018,11 @@ var genRandomMap = gopter.DeriveGen(makeRandomMap, unmakeRandomMap,
 
 func ExampleString() {
 	fmt.Println(New("1", "2", "3", "4"))
+	// Output: { [1 2] [3 4] }
+}
+
+func ExampleTransientString() {
+	fmt.Println(New("1", "2", "3", "4").AsTransient())
 	// Output: { [1 2] [3 4] }
 }
 
