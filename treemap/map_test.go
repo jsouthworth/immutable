@@ -938,3 +938,19 @@ func ExampleSeqString() {
 	fmt.Println(New("1", "2", "3", "4").Seq())
 	// Output: ([1 2] [3 4])
 }
+
+func TestIterator(t *testing.T) {
+	m := New(1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
+	expected := (1 + 2 + 3 + 4 + 5 + 6 + 7) * 2
+	iter := m.Iterator()
+	var got int
+	for iter.HasNext() {
+		k, v := iter.Next()
+		key, value := k.(int), v.(int)
+		got += key
+		got += value
+	}
+	if got != expected {
+		t.Fatalf("got %v, expected %v", got, expected)
+	}
+}

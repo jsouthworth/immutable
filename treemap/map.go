@@ -374,6 +374,16 @@ func genRangeFunc(do interface{}) func(Entry) bool {
 	}
 }
 
+// Iterator provides a mutable iterator over the map. This allows
+// efficient, heap allocation-less access to the contents. Iterators
+// are not safe for concurrent access so they may not be shared
+// by reference between goroutines.
+func (m *Map) Iterator() Iterator {
+	return Iterator{
+		impl: m.root.Iterator(),
+	}
+}
+
 // Seq returns a seralized sequence of Entry
 // corresponding to the maps entries.
 func (m *Map) Seq() seq.Sequence {
@@ -388,9 +398,11 @@ func (m *Map) Seq() seq.Sequence {
 func (m *Map) String() string {
 	var b strings.Builder
 	fmt.Fprint(&b, "{ ")
-	m.Range(func(entry Entry) {
+	iter := m.Iterator()
+	for iter.HasNext() {
+		entry := iter.NextEntry()
 		fmt.Fprintf(&b, "%s ", entry)
-	})
+	}
 	fmt.Fprint(&b, "}")
 	return b.String()
 }
@@ -398,9 +410,11 @@ func (m *Map) String() string {
 // AsNative returns the map converted to a go native map type.
 func (m *Map) AsNative() map[interface{}]interface{} {
 	out := make(map[interface{}]interface{})
-	m.Range(func(key, val interface{}) {
+	iter := m.Iterator()
+	for iter.HasNext() {
+		key, val := iter.Next()
 		out[key] = val
-	})
+	}
 	return out
 }
 
@@ -416,13 +430,15 @@ func (m *Map) Equal(o interface{}) bool {
 		return false
 	}
 	foundAll := true
-	m.Range(func(key, value interface{}) bool {
+	iter := m.Iterator()
+	for iter.HasNext() {
+		key, value := iter.Next()
 		if !dyn.Equal(other.At(key), value) {
 			foundAll = false
 			return false
 		}
 		return true
-	})
+	}
 	return foundAll
 }
 
@@ -432,4 +448,30 @@ func (m *Map) Equal(o interface{}) bool {
 func (m *Map) Apply(args ...interface{}) interface{} {
 	k := args[0]
 	return m.At(k)
+}
+
+// Iterator is a mutable iterator for a map. It has a fixed size
+// stack, the size of which is computed from the maximum number of
+// nested nodes possible based on the branching factor.
+type Iterator struct {
+	impl btree.Iterator
+}
+
+// Next provides the next key value pair and increments the cursor.
+func (i *Iterator) Next() (interface{}, interface{}) {
+	out := i.impl.Next()
+	ent := out.(entry)
+	return ent.key, ent.value
+}
+
+// NextEntry provides the next entry and increments the cursor.
+func (i *Iterator) NextEntry() Entry {
+	out := i.impl.Next()
+	ent := out.(entry)
+	return ent
+}
+
+// HasNext is true when there are more elements to be iterated over.
+func (i *Iterator) HasNext() bool {
+	return i.impl.HasNext()
 }
