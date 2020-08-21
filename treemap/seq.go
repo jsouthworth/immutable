@@ -1,39 +1,31 @@
 package treemap
 
 import (
+	"jsouthworth.net/go/immutable/internal/btree"
 	"jsouthworth.net/go/seq"
 )
 
 type sequence struct {
-	list seq.Sequence
+	iter btree.Iterator
 }
 
-func sequenceNew(t tree) *sequence {
+func sequenceNew(iter btree.Iterator) *sequence {
 	return &sequence{
-		list: sequencePush(t, nil),
+		iter: iter,
 	}
-}
-
-func sequencePush(t tree, s seq.Sequence) seq.Sequence {
-	list := s
-	for _, isLeaf := t.(*leaf); !isLeaf; _, isLeaf = t.(*leaf) {
-		list = seq.Cons(t, list)
-		t = left(t)
-	}
-	return list
 }
 
 func (s *sequence) First() interface{} {
-	return value(s.list.First().(tree))
+	return s.iter.Next()
 }
 
 func (s *sequence) Next() seq.Sequence {
-	t := s.list.First().(tree)
-	next := sequencePush(right(t), s.list.Next())
-	if next == nil {
+	new := &(*s)
+	hasNext := new.iter.HasNext()
+	if !hasNext {
 		return nil
 	}
-	return &sequence{list: next}
+	return new
 }
 
 func (s *sequence) String() string {

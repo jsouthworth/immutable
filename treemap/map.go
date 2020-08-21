@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"jsouthworth.net/go/dyn"
+	"jsouthworth.net/go/immutable/internal/btree"
 	"jsouthworth.net/go/seq"
 )
 
@@ -24,23 +25,57 @@ func EntryNew(key, value interface{}) Entry {
 	return entry{key, value}
 }
 
+type entry struct {
+	key   interface{}
+	value interface{}
+}
+
+func (e entry) Key() interface{} {
+	return e.key
+}
+
+func (e entry) Value() interface{} {
+	return e.value
+}
+
+func (e entry) String() string {
+	return fmt.Sprintf("[%v %v]", e.key, e.value)
+}
+
 // Map is a persistent immutable map based on Red/Black
 // trees. Operations on map returns a new map that shares much of the
 // structure with the original map.
 type Map struct {
-	compare cmpFunc
-	root    tree
-	count   int
+	root *btree.BTree
+}
+
+type cmpFunc func(k1, k2 interface{}) int
+type eqFunc func(k1, k2 interface{}) bool
+
+func defaultCompare(a, b interface{}) int {
+	ae := a.(entry)
+	be := b.(entry)
+	return dyn.Compare(ae.key, be.key)
+}
+
+func defaultEqual(a, b interface{}) bool {
+	ae, aok := a.(entry)
+	be, bok := b.(entry)
+	return aok && bok &&
+		dyn.Compare(ae.key, be.key) == 0 &&
+		dyn.Equal(ae.value, be.value)
 }
 
 var empty = Map{
-	compare: dyn.Compare,
-	root:    &leaf{cmp: dyn.Compare},
-	count:   0,
+	root: btree.Empty(
+		btree.Compare(defaultCompare),
+		btree.Equal(defaultEqual),
+	),
 }
 
 type mapOptions struct {
 	compare cmpFunc
+	equal   eqFunc
 }
 
 // Option is a type that allows changes to pluggable parts of the
@@ -49,10 +84,21 @@ type Option func(*mapOptions)
 
 // Compare is an option to the Empty function that will allow
 // one to specify a different comparison operator instead
-// of the default which is from the dyn library.
+// of the default which is from the dyn library. This is used
+// for keys.
 func Compare(cmp func(k1, k2 interface{}) int) Option {
 	return func(o *mapOptions) {
 		o.compare = cmp
+	}
+}
+
+// Equal is an option to the Empty function that will allow
+// one to specify a different equality operator instead
+// of the default which is from the dyn library. This is used
+// for values.
+func Equal(eq func(v1, v2 interface{}) bool) Option {
+	return func(o *mapOptions) {
+		o.equal = eq
 	}
 }
 
@@ -60,17 +106,36 @@ func Compare(cmp func(k1, k2 interface{}) int) Option {
 // for the map by using one of the option generating functions and
 // providing that to Empty.
 func Empty(options ...Option) *Map {
-	var opts mapOptions
+	if len(options) == 0 {
+		return &empty
+	}
+
+	opts := mapOptions{
+		compare: dyn.Compare,
+		equal:   dyn.Equal,
+	}
 	for _, opt := range options {
 		opt(&opts)
 	}
-	if opts.compare == nil {
-		return &empty
+
+	cmp := func(a, b interface{}) int {
+		ae := a.(entry)
+		be := b.(entry)
+		return opts.compare(ae.key, be.key)
 	}
+	eq := func(a, b interface{}) bool {
+		ae, aok := a.(entry)
+		be, bok := b.(entry)
+		return aok && bok &&
+			opts.compare(ae.key, be.key) == 0 &&
+			opts.equal(ae.value, be.value)
+	}
+
 	return &Map{
-		compare: opts.compare,
-		root:    &leaf{cmp: opts.compare},
-		count:   0,
+		root: btree.Empty(
+			btree.Compare(cmp),
+			btree.Equal(eq),
+		),
 	}
 }
 
@@ -156,34 +221,40 @@ func mapFromReflection(value interface{}, options ...Option) *Map {
 // At returns the value associated with the key.
 // If one is not found, nil is returned.
 func (m *Map) At(key interface{}) interface{} {
-	ent, ok := get(m.root, key)
+	v, ok := m.root.Find(entry{key: key})
 	if !ok {
 		return nil
 	}
+	ent := v.(entry)
 	return ent.value
 }
 
 // EntryAt returns the entry (key, value pair) of the key.
 // If one is not found, nil is returned.
 func (m *Map) EntryAt(key interface{}) Entry {
-	v, ok := get(m.root, key)
+	v, ok := m.root.Find(entry{key: key})
 	if !ok {
 		return nil
 	}
-	return v
+	ent := v.(entry)
+	return ent
 }
 
 // Contains will test if the key exists in the map.
 func (m *Map) Contains(key interface{}) bool {
-	_, ok := get(m.root, key)
-	return ok
+	return m.root.Contains(entry{key: key})
 }
 
 // Find will return the value for a key if it exists in the map and
 // whether the key exists in the map. For non-nil values, exists will
 // always be true.
 func (m *Map) Find(key interface{}) (value interface{}, exists bool) {
-	return get(m.root, key)
+	v, ok := m.root.Find(entry{key: key})
+	if !ok {
+		return nil, ok
+	}
+	ent := v.(entry)
+	return ent.value, ok
 }
 
 // Assoc associates a value with a key in the map.
@@ -191,21 +262,13 @@ func (m *Map) Find(key interface{}) (value interface{}, exists bool) {
 // are different from one already in the map, if the entry
 // is already in the map the original map is returned.
 func (m *Map) Assoc(key, value interface{}) *Map {
-	root, added := insert(m.root, key, value)
+	root := m.root.Add(entry{key: key, value: value})
 	switch {
 	case root == m.root:
 		return m
-	case added:
-		return &Map{
-			compare: m.compare,
-			root:    root,
-			count:   m.count + 1,
-		}
 	default:
 		return &Map{
-			compare: m.compare,
-			root:    root,
-			count:   m.count,
+			root: root,
 		}
 	}
 }
@@ -218,20 +281,18 @@ func (m *Map) Conj(elem interface{}) interface{} {
 
 // Delete removes a key and associated value from the map.
 func (m *Map) Delete(key interface{}) *Map {
-	root := _delete(m.root, key)
+	root := m.root.Delete(entry{key: key})
 	if root == m.root {
 		return m
 	}
 	return &Map{
-		compare: m.compare,
-		root:    root,
-		count:   m.count - 1,
+		root: root,
 	}
 }
 
 // Length returns the number of entries in the map.
 func (m *Map) Length() int {
-	return m.count
+	return m.root.Length()
 }
 
 // Range will loop over the entries in the Map and call 'do' on each entry.
@@ -257,10 +318,6 @@ func (m *Map) Length() int {
 //    Is called with reflection and will panic if the kT and vT types are incorrect.
 // Range will panic if passed anything not matching these signatures.
 func (m *Map) Range(do interface{}) {
-	s := seq.Seq(m)
-	if s == nil {
-		return
-	}
 	// NOTE: Update other functions using the same pattern
 	//       when modifying the below.
 	//       This code is inlined to avoid heap allocation of
@@ -286,11 +343,12 @@ func (m *Map) Range(do interface{}) {
 	default:
 		f = genRangeFunc(do)
 	}
+
+	iter := m.root.Iterator()
 	var cont = true
-	for s != nil && cont {
-		entry := seq.First(s).(Entry)
+	for iter.HasNext() && cont {
+		entry := iter.Next().(Entry)
 		cont = f(entry)
-		s = seq.Seq(seq.Next(s))
 	}
 }
 
@@ -319,10 +377,11 @@ func genRangeFunc(do interface{}) func(Entry) bool {
 // Seq returns a seralized sequence of Entry
 // corresponding to the maps entries.
 func (m *Map) Seq() seq.Sequence {
-	if _, isLeaf := m.root.(*leaf); isLeaf {
+	iter := m.root.Iterator()
+	if !iter.HasNext() {
 		return nil
 	}
-	return sequenceNew(m.root)
+	return sequenceNew(iter)
 }
 
 // String returns a string representation of the map.
