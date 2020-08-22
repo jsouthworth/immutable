@@ -26,6 +26,14 @@ func BenchmarkPMapAssoc(b *testing.B) {
 	}
 }
 
+func BenchmarkTMapAssoc(b *testing.B) {
+	b.ReportAllocs()
+	m := Empty().AsTransient()
+	for i := 0; i < b.N; i++ {
+		m = m.Assoc(i, i)
+	}
+}
+
 func BenchmarkNativeMapAssoc(b *testing.B) {
 	b.ReportAllocs()
 	m := make(map[int]int)
