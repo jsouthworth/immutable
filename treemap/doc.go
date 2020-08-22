@@ -1,8 +1,4 @@
-// Package treemap implements a persistent Red/Black tree. This tree is
-// based on Okasaki's persistent Red/Black tree with Germane and Might's
-// deletion extension. See:
-// http://www.eecs.usma.edu/webs/people/okasaki/jfp99.ps and
-// http://matt.might.net/papers/germane2014deletion.pdf for details.
+// Package treemap implements a map on top of a persistent B-tree.
 //
 // A note about Key and Value equality. If you would like to override
 // the default go equality operator for keys and values in this map library
