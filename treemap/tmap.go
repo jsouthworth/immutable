@@ -17,6 +17,8 @@ import (
 type TMap struct {
 	root *btree.TBTree
 	eq   eqFunc
+
+	orig *Map
 }
 
 // At returns the value associated with the key.
@@ -58,8 +60,12 @@ func (m *TMap) Conj(value interface{}) interface{} {
 // AsPersistent will transform this transient map into a persistent map.
 // Once this occurs any additional actions on the transient map will fail.
 func (m *TMap) AsPersistent() *Map {
+	newRoot := m.root.AsPersistent()
+	if newRoot == m.orig.root {
+		return m.orig
+	}
 	return &Map{
-		root: m.root.AsPersistent(),
+		root: newRoot,
 		eq:   m.eq,
 	}
 }

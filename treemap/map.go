@@ -549,6 +549,7 @@ func (m *Map) AsTransient() *TMap {
 	return &TMap{
 		root: m.root.AsTransient(),
 		eq:   m.eq,
+		orig: m,
 	}
 }
 

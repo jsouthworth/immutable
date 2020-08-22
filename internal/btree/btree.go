@@ -239,6 +239,8 @@ type TBTree struct {
 
 	cmp compareFunc
 	eq  eqFunc
+
+	orig *BTree
 }
 
 func (t *BTree) AsTransient() *TBTree {
@@ -249,6 +251,8 @@ func (t *BTree) AsTransient() *TBTree {
 		edit:    atomic.NewBool(true),
 		cmp:     t.cmp,
 		eq:      t.eq,
+
+		orig: t,
 	}
 }
 
@@ -334,6 +338,9 @@ func (t *TBTree) String() string {
 func (t *TBTree) AsPersistent() *BTree {
 	t.ensureEditable()
 	t.edit.Reset(false)
+	if t.root == t.orig.root {
+		return t.orig
+	}
 	return &BTree{
 		root:    t.root,
 		count:   t.count,
