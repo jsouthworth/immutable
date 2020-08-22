@@ -99,11 +99,11 @@ func New(elems ...interface{}) *Set {
 }
 
 func newWithOptions(elems []interface{}, options ...Option) *Set {
-	s := Empty(options...)
+	s := Empty(options...).AsTransient()
 	for _, elem := range elems {
 		s = s.Add(elem)
 	}
-	return s
+	return s.AsPersistent()
 }
 
 // From will convert many different go types to an immutable map.
@@ -112,6 +112,8 @@ func newWithOptions(elems []interface{}, options ...Option) *Set {
 //
 // *Set:
 //    Returned directly as it is already immutable.
+// *TSet:
+//    AsPersistent is called on it and the result is returned.
 // map[interface{}]struct{}:
 //    Converted directly by looping over the map and calling Add starting with an empty transient set. The transient set is the converted to a persistent one and returned.
 // []interface{}:
@@ -128,12 +130,14 @@ func From(value interface{}, options ...Option) *Set {
 	switch v := value.(type) {
 	case *Set:
 		return v
+	case *TSet:
+		return v.AsPersistent()
 	case map[interface{}]struct{}:
-		s := Empty(options...)
+		s := Empty(options...).AsTransient()
 		for k := range v {
 			s = s.Add(k)
 		}
-		return s
+		return s.AsPersistent()
 	case []interface{}:
 		return newWithOptions(v, options...)
 	case seq.Seqable:
@@ -149,26 +153,26 @@ func setFromSequence(coll seq.Sequence, options ...Option) *Set {
 	if coll == nil {
 		return Empty(options...)
 	}
-	return seq.Reduce(func(result *Set, input interface{}) *Set {
+	return seq.Reduce(func(result *TSet, input interface{}) *TSet {
 		return result.Add(input)
-	}, Empty(), coll).(*Set)
+	}, Empty().AsTransient(), coll).(*TSet).AsPersistent()
 }
 
 func setFromReflection(value interface{}, options ...Option) *Set {
 	v := reflect.ValueOf(value)
 	switch v.Kind() {
 	case reflect.Map:
-		out := Empty(options...)
+		out := Empty(options...).AsTransient()
 		for _, key := range v.MapKeys() {
 			out = out.Add(key.Interface())
 		}
-		return out
+		return out.AsPersistent()
 	case reflect.Slice:
-		out := Empty(options...)
+		out := Empty(options...).AsTransient()
 		for i := 0; i < v.Len(); i++ {
 			out = out.Add(v.Index(i).Interface())
 		}
-		return out
+		return out.AsPersistent()
 	default:
 		if value == nil {
 			return Empty(options...)
@@ -298,9 +302,11 @@ func (s *Set) Length() int {
 func (s *Set) String() string {
 	var b strings.Builder
 	fmt.Fprint(&b, "{ ")
-	s.Range(func(elem interface{}) {
+	iter := s.Iterator()
+	for iter.HasNext() {
+		elem := iter.Next()
 		fmt.Fprintf(&b, "%v ", elem)
-	})
+	}
 	fmt.Fprint(&b, "}")
 	return b.String()
 }
@@ -352,6 +358,33 @@ func (s *Set) Iterator() Iterator {
 	return Iterator{
 		impl: s.root.Iterator(),
 	}
+}
+
+// AsTransient will return a transient map that shares
+// structure with the persistent set.
+func (s *Set) AsTransient() *TSet {
+	return &TSet{
+		root: s.root.AsTransient(),
+		eq:   s.eq,
+		orig: s,
+	}
+}
+
+// MakeTransient is a generic version of AsTransient.
+func (s *Set) MakeTransient() interface{} {
+	return s.AsTransient()
+}
+
+// Transform takes a set of actions and performs them
+// on the persistent set. It does this by making a transient
+// set and calling each action on it, then converting it back
+// to a persistent set.
+func (m *Set) Transform(actions ...func(*TSet)) *Set {
+	out := m.AsTransient()
+	for _, action := range actions {
+		action(out)
+	}
+	return out.AsPersistent()
 }
 
 // Iterator is a mutable iterator for a set. It has a fixed size
