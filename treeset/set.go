@@ -12,21 +12,80 @@ import (
 	"strings"
 
 	"jsouthworth.net/go/dyn"
-	"jsouthworth.net/go/immutable/treemap"
+	"jsouthworth.net/go/immutable/internal/btree"
 	"jsouthworth.net/go/seq"
 )
 
 var errRangeSig = errors.New("Range requires a function: func(v vT) bool or func(v vT)")
 
-// Set is a persistent unordered set implementation.
+// Set is a persistent ordered set implementation.
 type Set struct {
-	backingMap *treemap.Map
+	root *btree.BTree
+	eq   eqFunc
 }
 
-// Empty returns the empty set.
-func Empty(options ...treemap.Option) *Set {
+type cmpFunc func(k1, k2 interface{}) int
+type eqFunc func(k1, k2 interface{}) bool
+
+func defaultCompare(a, b interface{}) int {
+	return dyn.Compare(a, b)
+}
+
+func defaultEqual(a, b interface{}) bool {
+	return dyn.Compare(a, b) == 0
+}
+
+var empty = Set{
+	root: btree.Empty(
+		btree.Compare(defaultCompare),
+		btree.Equal(defaultEqual),
+	),
+	eq: defaultEqual,
+}
+
+type setOptions struct {
+	compare cmpFunc
+}
+
+// Option is a type that allows changes to pluggable parts of the
+// Map implementation.
+type Option func(*setOptions)
+
+// Compare is an option to the Empty function that will allow
+// one to specify a different comparison operator instead
+// of the default which is from the dyn library. This is used
+// for keys.
+func Compare(cmp func(k1, k2 interface{}) int) Option {
+	return func(o *setOptions) {
+		o.compare = cmp
+	}
+}
+
+// Empty returns a new empty persistent set, one may supply options
+// for the set by using one of the option generating functions and
+// providing that to Empty.
+func Empty(options ...Option) *Set {
+	if len(options) == 0 {
+		return &empty
+	}
+
+	opts := setOptions{
+		compare: defaultCompare,
+	}
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	eq := func(a, b interface{}) bool {
+		return opts.compare(a, b) == 0
+	}
+
 	return &Set{
-		backingMap: treemap.Empty(options...),
+		root: btree.Empty(
+			btree.Compare(opts.compare),
+			btree.Equal(eq),
+		),
+		eq: eq,
 	}
 }
 
@@ -39,7 +98,7 @@ func New(elems ...interface{}) *Set {
 	return s
 }
 
-func newWithOptions(elems []interface{}, options ...treemap.Option) *Set {
+func newWithOptions(elems []interface{}, options ...Option) *Set {
 	s := Empty(options...)
 	for _, elem := range elems {
 		s = s.Add(elem)
@@ -65,7 +124,7 @@ func newWithOptions(elems []interface{}, options ...treemap.Option) *Set {
 //    The sequence is reduced into a transient set that is made persistent on return.
 // seq.Sequable:
 //    A sequence is obtained using Seq() and then the sequence is reduced into a transient set that is made persistent on return.
-func From(value interface{}, options ...treemap.Option) *Set {
+func From(value interface{}, options ...Option) *Set {
 	switch v := value.(type) {
 	case *Set:
 		return v
@@ -86,7 +145,7 @@ func From(value interface{}, options ...treemap.Option) *Set {
 	}
 }
 
-func setFromSequence(coll seq.Sequence, options ...treemap.Option) *Set {
+func setFromSequence(coll seq.Sequence, options ...Option) *Set {
 	if coll == nil {
 		return Empty(options...)
 	}
@@ -95,7 +154,7 @@ func setFromSequence(coll seq.Sequence, options ...treemap.Option) *Set {
 	}, Empty(), coll).(*Set)
 }
 
-func setFromReflection(value interface{}, options ...treemap.Option) *Set {
+func setFromReflection(value interface{}, options ...Option) *Set {
 	v := reflect.ValueOf(value)
 	switch v.Kind() {
 	case reflect.Map:
@@ -120,12 +179,13 @@ func setFromReflection(value interface{}, options ...treemap.Option) *Set {
 
 // Add adds an element to the set and a new set is returned.
 func (s *Set) Add(elem interface{}) *Set {
-	m := s.backingMap.Assoc(elem, nil)
-	if m == s.backingMap {
+	root := s.root.Add(elem)
+	if root == s.root {
 		return s
 	}
 	return &Set{
-		backingMap: m,
+		root: root,
+		eq:   s.eq,
 	}
 }
 
@@ -137,36 +197,35 @@ func (s *Set) Conj(elem interface{}) interface{} {
 
 // At returns the elem if it exists in the set otherwise it returns nil.
 func (s *Set) At(elem interface{}) interface{} {
-	if s.backingMap.Contains(elem) {
-		return elem
+	v, ok := s.root.Find(elem)
+	if !ok {
+		return nil
 	}
-	return nil
+	return v
 }
 
 // Contains returns true if the element is in the set, false otherwise.
 func (s *Set) Contains(elem interface{}) bool {
-	return s.backingMap.Contains(elem)
+	return s.root.Contains(elem)
 }
 
 // Find will return the key if it exists in the set and whether the
 // key exists in the set. If the key is not in the set, (nil, false) is
 // returned.
 func (s *Set) Find(elem interface{}) (interface{}, bool) {
-	if s.backingMap.Contains(elem) {
-		return elem, true
-	}
-	return nil, false
+	return s.root.Find(elem)
 }
 
 // Delete removes an element from the set returning a new Set without
 // the element.
 func (s *Set) Delete(elem interface{}) *Set {
-	m := s.backingMap.Delete(elem)
-	if m == s.backingMap {
+	root := s.root.Delete(elem)
+	if root == s.root {
 		return s
 	}
 	return &Set{
-		backingMap: m,
+		root: root,
+		eq:   s.eq,
 	}
 }
 
@@ -191,15 +250,13 @@ func (s *Set) Delete(elem interface{}) *Set {
 //    Is called with reflection and will panic if the type is incorrect.
 // Range will panic if passed anything that doesn't match one of these signatures
 func (s *Set) Range(do interface{}) {
-	var rangefn func(interface{}, interface{}) bool
+	var rangefn func(interface{}) bool
 	switch fn := do.(type) {
 	case func(value interface{}) bool:
-		rangefn = func(key, _ interface{}) bool {
-			return fn(key)
-		}
+		rangefn = fn
 	case func(value interface{}):
-		rangefn = func(key, _ interface{}) bool {
-			fn(key)
+		rangefn = func(val interface{}) bool {
+			fn(val)
 			return true
 		}
 	default:
@@ -215,21 +272,26 @@ func (s *Set) Range(do interface{}) {
 			rt.Out(0).Kind() != reflect.Bool {
 			panic(errRangeSig)
 		}
-		rangefn = func(key, _ interface{}) bool {
+		rangefn = func(val interface{}) bool {
 			cont := true
-			out := dyn.Apply(do, key)
+			out := dyn.Apply(do, val)
 			if out != nil {
 				cont = out.(bool)
 			}
 			return cont
 		}
 	}
-	s.backingMap.Range(rangefn)
+	iter := s.Iterator()
+	var cont = true
+	for iter.HasNext() && cont {
+		elem := iter.Next()
+		cont = rangefn(elem)
+	}
 }
 
 // Length returns the elements in the set.
 func (s *Set) Length() int {
-	return s.backingMap.Length()
+	return s.root.Length()
 }
 
 // String returns a string serialization of the set.
@@ -252,13 +314,13 @@ func (s *Set) Apply(args ...interface{}) interface{} {
 }
 
 // Seq returns a seralized sequence of interface{}
-// corresponding to the set's elements.
+// corresponding to the sets entries.
 func (s *Set) Seq() seq.Sequence {
-	mSeq := s.backingMap.Seq()
-	if mSeq == nil {
+	iter := s.root.Iterator()
+	if !iter.HasNext() {
 		return nil
 	}
-	return &setSeq{mSeq: mSeq}
+	return sequenceNew(iter)
 }
 
 // Equal tests if two sets are Equal by comparing the entries of each.
@@ -269,22 +331,69 @@ func (s *Set) Equal(o interface{}) bool {
 	if !ok {
 		return ok
 	}
-	return s.backingMap.Equal(other.backingMap)
+	if s.Length() != other.Length() {
+		return false
+	}
+	iter := s.Iterator()
+	for iter.HasNext() {
+		elem := iter.Next()
+		if !s.eq(other.At(elem), elem) {
+			return false
+		}
+	}
+	return true
 }
 
-type setSeq struct {
-	mSeq seq.Sequence
+// Iterator provides a mutable iterator over the set. This allows
+// efficient, heap allocation-less access to the contents. Iterators
+// are not safe for concurrent access so they may not be shared
+// by reference between goroutines.
+func (s *Set) Iterator() Iterator {
+	return Iterator{
+		impl: s.root.Iterator(),
+	}
 }
 
-func (s *setSeq) First() interface{} {
-	out := s.mSeq.First()
-	return out.(treemap.Entry).Key()
+// Iterator is a mutable iterator for a set. It has a fixed size
+// stack, the size of which is computed from the maximum number of
+// nested nodes possible based on the branching factor.
+type Iterator struct {
+	impl btree.Iterator
 }
 
-func (s *setSeq) Next() seq.Sequence {
-	next := s.mSeq.Next()
-	if next == nil {
+// Next provides the next key value pair and increments the cursor.
+func (i *Iterator) Next() interface{} {
+	return i.impl.Next()
+}
+
+// HasNext is true when there are more elements to be iterated over.
+func (i *Iterator) HasNext() bool {
+	return i.impl.HasNext()
+}
+
+type sequence struct {
+	iter btree.Iterator
+}
+
+func sequenceNew(iter btree.Iterator) *sequence {
+	return &sequence{
+		iter: iter,
+	}
+}
+
+func (s *sequence) First() interface{} {
+	return s.iter.Next()
+}
+
+func (s *sequence) Next() seq.Sequence {
+	new := &(*s)
+	hasNext := new.iter.HasNext()
+	if !hasNext {
 		return nil
 	}
-	return &setSeq{mSeq: next}
+	return new
+}
+
+func (s *sequence) String() string {
+	return seq.ConvertToString(s)
 }
