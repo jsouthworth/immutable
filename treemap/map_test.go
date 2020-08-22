@@ -1054,3 +1054,64 @@ func TestIterator(t *testing.T) {
 		t.Fatalf("got %v, expected %v", got, expected)
 	}
 }
+
+func TestTransform(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("Mutate makes expected changes", prop.ForAll(
+		func(m *Map) bool {
+			new := m.Transform(
+				func(t *TMap) {
+					t.Assoc("foo", "bar")
+				},
+				func(t *TMap) {
+					t.Assoc("bar", "baz")
+				},
+			)
+			return new.At("foo") == "bar" &&
+				new.At("bar") == "baz"
+		},
+		genMap,
+	))
+	properties.TestingRun(t)
+}
+
+func TestString(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("Mutate makes expected changes", prop.ForAll(
+		func(m *Map) bool {
+			new := m.Transform(
+				func(t *TMap) {
+					t.Assoc("foo", "bar")
+				},
+				func(t *TMap) {
+					t.Assoc("bar", "baz")
+				},
+			)
+			return new.String() == "{ [bar baz] [foo bar] }"
+		},
+		genMap,
+	))
+	properties.TestingRun(t)
+}
+
+func TestTransientString(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	properties := gopter.NewProperties(parameters)
+	properties.Property("Mutate makes expected changes", prop.ForAll(
+		func(m *Map) bool {
+			new := m.Transform(
+				func(t *TMap) {
+					t.Assoc("foo", "bar")
+				},
+				func(t *TMap) {
+					t.Assoc("bar", "baz")
+				},
+			).AsTransient()
+			return new.String() == "{ [bar baz] [foo bar] }"
+		},
+		genMap,
+	))
+	properties.TestingRun(t)
+}

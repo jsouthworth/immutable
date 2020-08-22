@@ -557,3 +557,15 @@ func (m *Map) AsTransient() *TMap {
 func (m *Map) MakeTransient() interface{} {
 	return m.AsTransient()
 }
+
+// Transform takes a set of actions and performs them
+// on the persistent map. It does this by making a transient
+// map and calling each action on it, then converting it back
+// to a persistent map.
+func (m *Map) Transform(actions ...func(*TMap)) *Map {
+	out := m.AsTransient()
+	for _, action := range actions {
+		action(out)
+	}
+	return out.AsPersistent()
+}
