@@ -434,6 +434,17 @@ func TestSeq(t *testing.T) {
 	}
 }
 
+func TestSeqString(t *testing.T) {
+	set := New(1, 2, 3, 4, 5)
+	s := set.Seq()
+	str := fmt.Sprint(s)
+	exp := "(1 2 3 4 5)"
+	if str != exp {
+		t.Fatalf("Seq didn't produce the correct string: got: %s exp: %s", str, exp)
+
+	}
+}
+
 func TestSeqEmpty(t *testing.T) {
 	set := Empty()
 	s := set.Seq()
@@ -443,12 +454,69 @@ func TestSeqEmpty(t *testing.T) {
 }
 
 func TestEqual(t *testing.T) {
-	s1 := New(1, 2, 3)
-	s2 := New(1, 2, 3)
+	t.Run("equal", func(t *testing.T) {
+		s1 := New(1, 2, 3)
+		s2 := New(1, 2, 3)
+		if !s1.Equal(s2) {
+			t.Fatal("Sets should have been equal")
+		}
+	})
+	t.Run("different-types", func(t *testing.T) {
+		s1 := New(1, 2, 3)
+		s2 := New(1, 2).AsTransient()
+		if s1.Equal(s2) {
+			t.Fatal("Sets should not have been equal")
+		}
+	})
+	t.Run("different-lengths", func(t *testing.T) {
+		s1 := New(1, 2, 3)
+		s2 := New(1, 2)
+		if s1.Equal(s2) {
+			t.Fatal("Sets should not have been equal")
+		}
+	})
+	t.Run("different-values", func(t *testing.T) {
+		s1 := New(1, 2, 3)
+		s2 := New(1, 2, 5)
+		if s1.Equal(s2) {
+			t.Fatal("Sets should not have been equal")
+		}
+	})
+}
+
+func TestTransform(t *testing.T) {
+	s1 := New(1, 2, 3, 4, 5, 6)
+	s2 := Empty().Transform(func(s *TSet) {
+		s.Add(1).Add(2).Add(3)
+	}, func(s *TSet) {
+		s.Add(4).Add(5).Add(6)
+	})
 	if !s1.Equal(s2) {
 		t.Fatal("Sets should have been equal")
 	}
-	if s1.Equal(10) {
-		t.Fatal("Set should not have been equal to an int")
+}
+
+func TestCustomComparator(t *testing.T) {
+	s1 := Empty(Compare(func(a, b interface{}) int {
+		ai, aok := a.(int)
+		bi, bok := b.(int)
+		if !aok || !bok {
+			return -1
+		}
+		switch {
+		case ai > bi:
+			return 1
+		case ai < bi:
+			return -1
+		default:
+			return 0
+		}
+	}))
+	s1 = s1.Transform(func(s *TSet) {
+		s.Add(1).Add(2).Add(3).Add(4)
+	})
+	s2 := New(1, 2, 3, 5)
+	if s1.Equal(s2) {
+		t.Fatal("Sets should not have been equal")
 	}
 }

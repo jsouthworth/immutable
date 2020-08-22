@@ -269,12 +269,44 @@ func TestTransientString(t *testing.T) {
 }
 
 func TestTransientEqual(t *testing.T) {
-	s1 := New(1, 2, 3).AsTransient()
-	s2 := New(1, 2, 3).AsTransient()
-	if !s1.Equal(s2) {
-		t.Fatal("Sets should have been equal")
-	}
-	if s1.Equal(10) {
-		t.Fatal("Set should not have been equal to an int")
+	t.Run("equal", func(t *testing.T) {
+		s1 := New(1, 2, 3).AsTransient()
+		s2 := New(1, 2, 3).MakeTransient().(*TSet)
+		if !s1.Equal(s2) {
+			t.Fatal("Sets should have been equal")
+		}
+	})
+	t.Run("different-types", func(t *testing.T) {
+		s1 := New(1, 2, 3).AsTransient()
+		s2 := New(1, 2)
+		if s1.Equal(s2) {
+			t.Fatal("Sets should not have been equal")
+		}
+	})
+	t.Run("different-lengths", func(t *testing.T) {
+		s1 := New(1, 2, 3).AsTransient()
+		s2 := New(1, 2).AsTransient()
+		if s1.Equal(s2) {
+			t.Fatal("Sets should not have been equal")
+		}
+	})
+	t.Run("different-values", func(t *testing.T) {
+		s1 := New(1, 2, 3).AsTransient()
+		s2 := New(1, 2, 5).AsTransient()
+		if s1.Equal(s2) {
+			t.Fatal("Sets should not have been equal")
+		}
+	})
+}
+
+func TestTransientMakePersistent(t *testing.T) {
+	s := New(1, 2, 3).
+		AsTransient().
+		MakePersistent()
+	switch s.(type) {
+	case *Set:
+	default:
+		t.Fatalf("unexpected return from MakePersistent %T", s)
+
 	}
 }
