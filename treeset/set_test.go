@@ -13,6 +13,42 @@ import (
 	"jsouthworth.net/go/seq"
 )
 
+func BenchmarkAdd(b *testing.B) {
+	s := Empty()
+	for i := 0; i < b.N; i++ {
+		s = s.Add(i)
+	}
+}
+
+func BenchmarkTransientAdd(b *testing.B) {
+	s := Empty().AsTransient()
+	for i := 0; i < b.N; i++ {
+		s.Add(i)
+	}
+}
+
+func BenchmarkDelete(b *testing.B) {
+	s := Empty()
+	for i := 0; i < b.N; i++ {
+		s = s.Add(i)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s = s.Delete(i)
+	}
+}
+
+func BenchmarkTransientDelete(b *testing.B) {
+	s := Empty().AsTransient()
+	for i := 0; i < b.N; i++ {
+		s = s.Add(i)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s = s.Delete(i)
+	}
+}
+
 func TestSet(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	properties := gopter.NewProperties(parameters)
