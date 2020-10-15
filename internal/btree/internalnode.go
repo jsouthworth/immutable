@@ -58,7 +58,7 @@ func (n *internalNode) add(
 		return ret
 	case returnOne, returnReplaced:
 		if n.isEditable() {
-			return n.modifyInPlace(ins, ret.nodes[0], ret.status)
+			return n.modifyInPlace(ins, eq, ret.nodes[0], ret.status)
 		}
 		return n.copyAndModify(ins, eq, edit, ret.nodes[0], ret.status)
 	default:
@@ -71,11 +71,11 @@ func (n *internalNode) add(
 }
 
 func (n *internalNode) modifyInPlace(
-	ins int, new node, status returnStatus,
+	ins int, eq eqFunc, new node, status returnStatus,
 ) nodeReturn {
 	n.keys[ins] = new.maxKey()
 	n.children[ins] = new
-	if ins == n.len-1 && new.maxKey() == n.maxKey() {
+	if ins == n.len-1 && eq(new.maxKey(), n.maxKey()) {
 		return nodeReturn{
 			status: status,
 			nodes:  [3]node{n},
