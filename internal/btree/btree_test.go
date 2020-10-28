@@ -629,6 +629,34 @@ func TestIterator(t *testing.T) {
 	}
 }
 
+func TestIteratorFrom(t *testing.T) {
+	var froms = []int{-10, 0, 99997, 100000, 100001}
+	sums := make([]int, len(froms))
+	tree := btree.Empty().AsTransient()
+	for i, from := range froms {
+		var sum int
+		for i := 0; i < 100000; i++ {
+			tree = tree.Add(i)
+			if i >= from {
+				sum += i
+			}
+		}
+		sums[i] = sum
+	}
+	p := tree.AsPersistent()
+	for i, from := range froms {
+		iter := p.IteratorFrom(from)
+		var got int
+		for iter.HasNext() {
+			val := iter.Next().(int)
+			got += val
+		}
+		if sums[i] != got {
+			t.Fatalf("didn't get expected value from iteration: got %v expected %v", got, sums[i])
+		}
+	}
+}
+
 func TestIteratorEmpty(t *testing.T) {
 	tree := btree.Empty()
 	iter := tree.Iterator()

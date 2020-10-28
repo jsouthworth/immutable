@@ -50,6 +50,12 @@ func (n *leafNode) search(key interface{}, cmp compareFunc) int {
 	}
 }
 
+func (n *leafNode) searchFirst(key interface{}, cmp compareFunc) int {
+	return sort.Search(n.len, func(i int) bool {
+		return cmp(n.keys[i], key) >= 0
+	})
+}
+
 func (n *leafNode) searchEq(key interface{}, cmp compareFunc, eq eqFunc) (int, bool) {
 	i := sort.Search(n.len, func(i int) bool {
 		return cmp(n.keys[i], key) >= 0

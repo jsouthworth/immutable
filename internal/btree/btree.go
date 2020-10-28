@@ -154,12 +154,20 @@ func (t *BTree) String() string {
 }
 
 func (t *BTree) Iterator() Iterator {
-	i := makeIterator(t.root)
+	i := makeIterator(t.cmp, t.root)
+	i.HasNext() // Make sure the initial iterator value is valid
+	return i
+}
+
+func (t *BTree) IteratorFrom(from interface{}) Iterator {
+	i := makeIterator(t.cmp, t.root)
+	i.findFirst(from)
 	i.HasNext() // Make sure the initial iterator value is valid
 	return i
 }
 
 type Iterator struct {
+	cmp   compareFunc
 	depth int
 	stack [maxIterDepth]struct {
 		n   node
@@ -167,8 +175,9 @@ type Iterator struct {
 	}
 }
 
-func makeIterator(n node) Iterator {
+func makeIterator(cmp compareFunc, n node) Iterator {
 	var i Iterator
+	i.cmp = cmp
 	i.stack[0].n = n
 	return i
 }
@@ -229,6 +238,27 @@ func (i *Iterator) popNode() {
 	state.cur = 0
 	i.stack[i.depth] = state
 	i.depth = i.depth - 1
+}
+
+func (i *Iterator) findFirst(from interface{}) {
+	for {
+		state := i.stack[i.depth]
+		switch n := state.n.(type) {
+		case *leafNode:
+			first := n.searchFirst(from, i.cmp)
+			i.stack[i.depth].cur = first
+			return
+		case *internalNode:
+			first := n.searchFirst(from, i.cmp)
+			if first >= len(n.children) {
+				i.stack[i.depth].cur = len(n.children)
+				return
+			}
+			child := n.children[first]
+			i.stack[i.depth].cur = first + 1
+			i.pushNode(child)
+		}
+	}
 }
 
 type TBTree struct {
@@ -319,7 +349,7 @@ func (t *TBTree) Delete(key interface{}) *TBTree {
 
 func (t *TBTree) Iterator() Iterator {
 	t.ensureEditable()
-	i := makeIterator(t.root)
+	i := makeIterator(t.cmp, t.root)
 	i.HasNext() // Make sure the initial iterator value is valid
 	return i
 }
@@ -376,6 +406,7 @@ const (
 
 type node interface {
 	search(key interface{}, cmp compareFunc) int
+	searchFirst(key interface{}, cmp compareFunc) int
 	find(key interface{}, cmp compareFunc) (interface{}, bool)
 	add(key interface{}, cmp compareFunc, eq eqFunc, edit *atomic.Bool) nodeReturn
 	remove(key interface{}, left, right node, cmp compareFunc, edit *atomic.Bool) nodeReturn
