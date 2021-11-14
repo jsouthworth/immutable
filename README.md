@@ -24,7 +24,7 @@ The full documentation is available at
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE)
+[LICENSE](LICENSE)
 
 ## Acknowledgments
 
